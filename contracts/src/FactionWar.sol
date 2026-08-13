@@ -22,6 +22,7 @@ contract FactionWar {
     }
 
     uint8 public constant FACTION_COUNT = 3;
+    uint256 public constant FULL_REFERRAL_SPLIT = 1e18;
 
     struct ZoneState {
         mapping(uint8 => uint256) ticketsByFaction; // Faction => count, current open drawing
@@ -90,7 +91,10 @@ contract FactionWar {
         address[] memory referrers = new address[](1);
         referrers[0] = factionReferrer[faction];
         uint256[] memory splits = new uint256[](1);
-        splits[0] = 10_000; // full bps to this faction's referrer tag
+        // Jackpot's _referralSplit is 1e18-scale (same as referralFee/referralWinShare),
+        // NOT basis points — confirmed on-chain against Base Sepolia after ReferralSplitSumInvalid
+        // reverts on a 10_000 guess. Full split to the single per-faction referrer = 1e18.
+        splits[0] = FULL_REFERRAL_SPLIT;
 
         jackpot.buyTickets(tickets, msg.sender, referrers, splits, bytes32("FACTIONWAR"));
 
