@@ -48,4 +48,12 @@ interface IJackpot {
     function currentDrawingId() external view returns (uint256);
 
     function drawingDurationInSeconds() external view returns (uint256);
+
+    /// @notice Accrued, unclaimed referral fees for `account` (purchase fee + win share).
+    /// Confirmed on-chain (Base Sepolia): `referralFees(referrer)` returns the raw
+    /// accrued USDC amount — nonzero immediately after a purchase citing that referrer.
+    function referralFees(address account) external view returns (uint256);
+
+    /// @notice Claims the full accrued referral fee balance for msg.sender in one transfer.
+    function claimReferralFees() external;
 }

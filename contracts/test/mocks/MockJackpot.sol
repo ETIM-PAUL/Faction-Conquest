@@ -17,8 +17,10 @@ contract MockJackpot is IJackpot {
     mapping(uint256 => DrawingState) private states;
     mapping(uint256 => uint8[]) private winningNormals;
     mapping(uint256 => uint8) private winningBonusball;
+    mapping(address => uint256) private referralFeesOwed;
 
     uint256 private constant WINNING_TICKET_SENTINEL = 777;
+    uint256 private constant REFERRAL_FEE_RATE = 0.1e18; // 10% — matches the rate read on real Base Sepolia
 
     constructor(address _usdc, uint8 _ballMax, uint8 _bonusballMax) {
         usdcToken = IERC20(_usdc);
@@ -46,13 +48,17 @@ contract MockJackpot is IJackpot {
     function buyTickets(
         Ticket[] calldata _tickets,
         address, /* _recipient */
-        address[] calldata, /* _referrers */
+        address[] calldata _referrers,
         uint256[] calldata, /* _referralSplit */
         bytes32 /* _source */
     ) external returns (uint256[] memory ticketIds) {
         DrawingState storage s = states[currentId];
         uint256 cost = s.ticketPrice * _tickets.length;
         usdcToken.transferFrom(msg.sender, address(this), cost);
+
+        if (_referrers.length > 0) {
+            referralFeesOwed[_referrers[0]] += (cost * REFERRAL_FEE_RATE) / 1e18;
+        }
 
         ticketIds = new uint256[](_tickets.length);
         for (uint256 i = 0; i < _tickets.length; i++) {
@@ -99,6 +105,16 @@ contract MockJackpot is IJackpot {
 
     function drawingDurationInSeconds() external pure returns (uint256) {
         return 1 days;
+    }
+
+    function referralFees(address account) external view returns (uint256) {
+        return referralFeesOwed[account];
+    }
+
+    function claimReferralFees() external {
+        uint256 amount = referralFeesOwed[msg.sender];
+        referralFeesOwed[msg.sender] = 0;
+        usdcToken.transfer(msg.sender, amount);
     }
 
     // ---- test helpers ----

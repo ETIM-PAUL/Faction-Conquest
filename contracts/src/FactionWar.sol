@@ -13,6 +13,13 @@ import {IERC20} from "./interfaces/IERC20.sol";
 /// - 3 factions: RED, BLUE, GREEN.
 /// - bonusball is purchase-only, not a capturable zone — only `normals` resolve.
 /// - Tie-break on equal ticket counts: lowest Faction enum value wins (RED > BLUE > GREEN).
+///
+/// War chest: FactionWar is the referrer on every attack (self-referral — confirmed
+/// on-chain against Base Sepolia that Jackpot allows referrer == msg.sender). Real
+/// USDC referral fees accrue to this contract and get swept + split across factions
+/// proportional to territory on every resolveDrawing. Any player on a faction can
+/// claim their faction's whole pot — first to claim for your team takes it, which
+/// is a deliberate coordination/race mechanic, not an oversight.
 contract FactionWar {
     enum Faction {
         NONE,
@@ -37,9 +44,9 @@ contract FactionWar {
     mapping(address => Faction) public playerFaction;
     mapping(uint256 => Faction) public heraldByDrawing; // drawingId => faction that triggered settlement
     mapping(uint256 => bool) public drawingResolved;
-    mapping(Faction => address) public factionReferrer;
     mapping(Faction => uint256) public territoryCount;
     mapping(Faction => uint256) public heraldBonus;
+    mapping(Faction => uint256) public factionWarChest; // claimable USDC, funded by referral fees
 
     uint256 public lastResolvedDrawing;
 
@@ -49,6 +56,8 @@ contract FactionWar {
     );
     event BattleTriggered(uint256 indexed drawingId, Faction indexed faction, address caller);
     event ZonesResolved(uint256 indexed drawingId, uint8[] capturedZones, Faction[] winningFactions);
+    event WarChestFunded(uint256 indexed drawingId, uint256 totalSwept, uint256[] shares);
+    event WarChestClaimed(Faction indexed faction, address indexed claimer, uint256 amount);
 
     error InvalidFaction();
     error NoFaction();
@@ -58,13 +67,11 @@ contract FactionWar {
     error RefundFailed();
     error UsdcTransferFailed();
     error UsdcApproveFailed();
+    error EmptyWarChest();
 
-    constructor(address _jackpot, address _usdc, address _redReferrer, address _blueReferrer, address _greenReferrer) {
+    constructor(address _jackpot, address _usdc) {
         jackpot = IJackpot(_jackpot);
         usdc = IERC20(_usdc);
-        factionReferrer[Faction.RED] = _redReferrer;
-        factionReferrer[Faction.BLUE] = _blueReferrer;
-        factionReferrer[Faction.GREEN] = _greenReferrer;
     }
 
     /// @notice One-time (re-pickable) faction assignment for the caller.
@@ -88,12 +95,13 @@ contract FactionWar {
         IJackpot.Ticket[] memory tickets = new IJackpot.Ticket[](1);
         tickets[0] = IJackpot.Ticket({normals: normals, bonusball: bonusball});
 
+        // FactionWar itself is the referrer — this is what funds the war chest.
         address[] memory referrers = new address[](1);
-        referrers[0] = factionReferrer[faction];
+        referrers[0] = address(this);
         uint256[] memory splits = new uint256[](1);
         // Jackpot's _referralSplit is 1e18-scale (same as referralFee/referralWinShare),
         // NOT basis points — confirmed on-chain against Base Sepolia after ReferralSplitSumInvalid
-        // reverts on a 10_000 guess. Full split to the single per-faction referrer = 1e18.
+        // reverts on a 10_000 guess. Full split to the single referrer = 1e18.
         splits[0] = FULL_REFERRAL_SPLIT;
 
         jackpot.buyTickets(tickets, msg.sender, referrers, splits, bytes32("FACTIONWAR"));
@@ -179,6 +187,44 @@ contract FactionWar {
         lastResolvedDrawing = drawingId;
 
         emit ZonesResolved(drawingId, captured, winners);
+
+        _sweepAndFundWarChest(drawingId);
+    }
+
+    /// @notice Claims this faction's entire war chest for msg.sender. Requires msg.sender
+    /// be on that faction. Whole-pot, first-claimer-takes-it — a deliberate race, not a bug.
+    function claimFactionTreasury(Faction f) external {
+        if (playerFaction[msg.sender] != f) revert NoFaction();
+        uint256 amount = factionWarChest[f];
+        if (amount == 0) revert EmptyWarChest();
+
+        factionWarChest[f] = 0;
+        if (!usdc.transfer(msg.sender, amount)) revert UsdcTransferFailed();
+
+        emit WarChestClaimed(f, msg.sender, amount);
+    }
+
+    /// @dev Sweeps any USDC referral fees accrued to this contract and splits them
+    /// across factions proportional to total territory controlled *after* this
+    /// round's captures. If nobody controls any territory yet, the fees stay
+    /// accrued in Jackpot (not swept) until a future round when they can be split.
+    function _sweepAndFundWarChest(uint256 drawingId) internal {
+        uint256 accrued = jackpot.referralFees(address(this));
+        if (accrued == 0) return;
+
+        uint256 totalTerritory = territoryCount[Faction.RED] + territoryCount[Faction.BLUE] + territoryCount[Faction.GREEN];
+        if (totalTerritory == 0) return;
+
+        jackpot.claimReferralFees();
+
+        uint256[] memory shares = new uint256[](FACTION_COUNT + 1);
+        for (uint8 f = 1; f <= FACTION_COUNT; f++) {
+            uint256 share = (accrued * territoryCount[Faction(f)]) / totalTerritory;
+            factionWarChest[Faction(f)] += share;
+            shares[f] = share;
+        }
+
+        emit WarChestFunded(drawingId, accrued, shares);
     }
 
     // ---------------------------------------------------------------------
@@ -224,13 +270,20 @@ contract FactionWar {
         }
     }
 
-    /// @notice Leaderboard data: territory count + Herald bonuses, indexed by Faction enum value.
-    function getFactionScores() external view returns (uint256[] memory territory, uint256[] memory herald) {
+    /// @notice Leaderboard data: territory count, Herald bonuses, and claimable war
+    /// chest (USDC, 6 decimals), all indexed by Faction enum value.
+    function getFactionScores()
+        external
+        view
+        returns (uint256[] memory territory, uint256[] memory herald, uint256[] memory warChest)
+    {
         territory = new uint256[](FACTION_COUNT + 1);
         herald = new uint256[](FACTION_COUNT + 1);
+        warChest = new uint256[](FACTION_COUNT + 1);
         for (uint8 f = 1; f <= FACTION_COUNT; f++) {
             territory[f] = territoryCount[Faction(f)];
             herald[f] = heraldBonus[Faction(f)];
+            warChest[f] = factionWarChest[Faction(f)];
         }
     }
 }
