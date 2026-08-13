@@ -1,10 +1,11 @@
-import { useWaitForTransactionReceipt, useWriteContract } from "wagmi";
+import { useAccount, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
 import { FACTION_WAR_ABI } from "../contracts/FactionWar.abi";
 import { FACTION_WAR_ADDRESS } from "../contracts/addresses";
 import { FACTIONS, FACTION_COLOR, FACTION_GLYPH, FACTION_LABEL, type Faction } from "../contracts/faction";
 import { usePlayerFaction } from "../hooks/useFactionWar";
 
 export function FactionSelect() {
+  const { isConnected } = useAccount();
   const { data: currentFaction, refetch } = usePlayerFaction();
   const { writeContract, data: hash, isPending } = useWriteContract();
   const { isLoading: isConfirming } = useWaitForTransactionReceipt({
@@ -34,7 +35,7 @@ export function FactionSelect() {
             <button
               key={f}
               onClick={() => join(f)}
-              disabled={isPending || isConfirming}
+              disabled={!isConnected || isPending || isConfirming}
               aria-pressed={selected}
               style={{
                 flex: 1,
@@ -58,6 +59,7 @@ export function FactionSelect() {
           );
         })}
       </div>
+      {!isConnected && <p style={{ color: "var(--accent)" }}>Connect your wallet to join a faction.</p>}
       {currentFaction !== undefined && currentFaction !== 0 && (
         <p>
           You're on: {FACTION_GLYPH[currentFaction as Faction]} {FACTION_LABEL[currentFaction as Faction]}

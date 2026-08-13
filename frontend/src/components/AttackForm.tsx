@@ -4,16 +4,21 @@ import { FACTION_WAR_ABI } from "../contracts/FactionWar.abi";
 import { USDC_ABI } from "../contracts/Jackpot.abi";
 import { FACTION_WAR_ADDRESS, USDC_ADDRESS } from "../contracts/addresses";
 import { useDrawingState } from "../hooks/useDrawingState";
+import { NumberPicker } from "./NumberPicker";
+
+const NORMALS_REQUIRED = 5;
 
 /// Attack form (Build.md phase 3 / section 4.3, restyled as a HUD panel).
 /// Approves USDC to FactionWar once (if needed), then calls
 /// attack(normals, bonusball) — FactionWar forwards the real purchase to
-/// Jackpot.buyTickets.
+/// Jackpot.buyTickets. Every entry needs exactly 5 normals + 1 bonusball
+/// (llms.md: "every entry needs 5 normals + bonusball"), so the picker
+/// enforces that instead of trusting free-text input.
 export function AttackForm() {
-  const { address } = useAccount();
+  const { address, isConnected } = useAccount();
   const { drawingState } = useDrawingState();
-  const [normalsInput, setNormalsInput] = useState("1,2,3,4,5");
-  const [bonusball, setBonusball] = useState(1);
+  const [normals, setNormals] = useState<number[]>([]);
+  const [bonusball, setBonusball] = useState<number | null>(null);
 
   const ballMax = drawingState?.ballMax ?? 0;
   const bonusballMax = drawingState?.bonusballMax ?? 0;
@@ -34,6 +39,15 @@ export function AttackForm() {
   });
 
   const needsApproval = (allowance ?? 0n) < ticketPrice;
+  const ready = normals.length === NORMALS_REQUIRED && bonusball !== null;
+
+  function toggleNormal(n: number) {
+    setNormals((prev) => (prev.includes(n) ? prev.filter((x) => x !== n) : [...prev, n]));
+  }
+
+  function selectBonusball(n: number) {
+    setBonusball((prev) => (prev === n ? null : n));
+  }
 
   function approve() {
     writeContract(
@@ -48,57 +62,54 @@ export function AttackForm() {
   }
 
   function attack() {
-    const normals = normalsInput
-      .split(",")
-      .map((n) => Number(n.trim()))
-      .filter((n) => Number.isInteger(n) && n > 0);
-
-    writeContract({
-      address: FACTION_WAR_ADDRESS,
-      abi: FACTION_WAR_ABI,
-      functionName: "attack",
-      args: [normals, bonusball],
-    });
+    if (!ready || bonusball === null) return;
+    writeContract(
+      {
+        address: FACTION_WAR_ADDRESS,
+        abi: FACTION_WAR_ABI,
+        functionName: "attack",
+        args: [[...normals].sort((a, b) => a - b), bonusball],
+      },
+      { onSuccess: () => setNormals([]) },
+    );
   }
+
+  const disabled = !isConnected || isPending || isConfirming;
 
   return (
     <section className="panel">
       <h2>Attack a zone</h2>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: "var(--space-2)" }}>
-        <p style={{ color: "var(--text-muted)", marginBottom: 0 }}>
-          Ball range: 1–{ballMax || "?"} · Bonusball: 1–{bonusballMax || "?"}
-        </p>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "baseline",
+          marginBottom: "var(--space-2)",
+        }}
+      >
+        <p style={{ color: "var(--text-muted)", marginBottom: 0 }}>Ticket price</p>
         <span className="text-critical">{(Number(ticketPrice) / 1e6).toFixed(2)} USDC</span>
       </div>
-      <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-1)" }}>
-        <label>
-          Normals (comma-separated)
-          <br />
-          <input
-            style={{ width: "100%" }}
-            value={normalsInput}
-            onChange={(e) => setNormalsInput(e.target.value)}
-          />
-        </label>
-        <label>
-          Bonusball
-          <br />
-          <input
-            type="number"
-            min={1}
-            max={bonusballMax || undefined}
-            value={bonusball}
-            onChange={(e) => setBonusball(Number(e.target.value))}
-          />
-        </label>
-      </div>
+
+      <p style={{ color: "var(--text-muted)", fontSize: "var(--text-sm)" }}>
+        Normals — pick {NORMALS_REQUIRED} ({normals.length}/{NORMALS_REQUIRED})
+      </p>
+      <NumberPicker mode="toggle" max={ballMax || 1} selected={normals} onToggle={toggleNormal} limit={NORMALS_REQUIRED} />
+
+      <p style={{ color: "var(--text-muted)", fontSize: "var(--text-sm)", marginTop: "var(--space-2)" }}>
+        Bonusball {bonusball !== null ? `— ${bonusball}` : ""}
+      </p>
+      <NumberPicker mode="radio" max={bonusballMax || 1} selected={bonusball} onSelect={selectBonusball} />
+
       <div style={{ marginTop: "var(--space-2)" }}>
-        {needsApproval ? (
-          <button onClick={approve} disabled={isPending || isConfirming}>
+        {!isConnected ? (
+          <p style={{ color: "var(--accent)" }}>Connect your wallet to attack.</p>
+        ) : needsApproval ? (
+          <button onClick={approve} disabled={disabled}>
             Approve USDC
           </button>
         ) : (
-          <button onClick={attack} disabled={isPending || isConfirming}>
+          <button onClick={attack} disabled={disabled || !ready}>
             Buy ticket / attack
           </button>
         )}
