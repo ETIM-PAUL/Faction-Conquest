@@ -6,6 +6,7 @@ import { AttackForm } from "./components/AttackForm";
 import { TriggerBattle } from "./components/TriggerBattle";
 import { ResolveDrawing } from "./components/ResolveDrawing";
 import { Leaderboard } from "./components/Leaderboard";
+import { BattleLog } from "./components/BattleLog";
 import { MapGrid } from "./components/MapGrid";
 import { MapScene } from "./three/MapScene";
 import { FACTION_WAR_ADDRESS } from "./contracts/addresses";
@@ -15,29 +16,63 @@ function App() {
   const [show3D, setShow3D] = useState(false);
 
   return (
-    <div style={{ padding: "1rem", fontFamily: "sans-serif" }}>
-      <h1>Faction Conquest</h1>
-      <ConnectWallet />
+    <div style={{ minHeight: "100vh" }}>
+      <header
+        className="panel"
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          borderRadius: 0,
+          borderLeft: "none",
+          borderRight: "none",
+          borderTop: "none",
+          padding: "var(--space-2) var(--space-3)",
+          marginBottom: 0,
+        }}
+      >
+        <h1 style={{ margin: 0, fontSize: "var(--text-lg)" }}>⚔ Faction Conquest</h1>
+        <ConnectWallet />
+      </header>
 
-      {!FACTION_WAR_ADDRESS && (
-        <p style={{ color: "orange" }}>
-          VITE_FACTION_WAR_ADDRESS is unset — deploy FactionWar (contracts/script/Deploy.s.sol) and set it in
-          .env before any faction/attack/battle actions will work.
-        </p>
-      )}
+      <div style={{ padding: "var(--space-3)" }}>
+        {!FACTION_WAR_ADDRESS && (
+          <p style={{ color: "var(--accent)" }}>
+            VITE_FACTION_WAR_ADDRESS is unset — deploy FactionWar (contracts/script/Deploy.s.sol) and set it in
+            .env before any faction/attack/battle actions will work.
+          </p>
+        )}
 
-      {isConnected && FACTION_WAR_ADDRESS && (
-        <>
-          <FactionSelect />
-          <AttackForm />
-          <TriggerBattle />
-          <ResolveDrawing />
-          <Leaderboard />
+        {isConnected && FACTION_WAR_ADDRESS && (
+          <div style={{ display: "flex", gap: "var(--space-3)", flexWrap: "wrap", alignItems: "flex-start" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-2)", flex: "1 1 320px", minWidth: 320 }}>
+              <FactionSelect />
+              <AttackForm />
+              <TriggerBattle />
+              <ResolveDrawing />
+            </div>
 
-          <button onClick={() => setShow3D((v) => !v)}>{show3D ? "Show flat grid" : "Show 3D map (phase 4)"}</button>
-          {show3D ? <MapScene /> : <MapGrid />}
-        </>
-      )}
+            <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-2)", flex: "2 1 480px", minWidth: 320 }}>
+              <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                <button onClick={() => setShow3D((v) => !v)}>
+                  {show3D ? "Show flat grid" : "Show 3D map (phase 4)"}
+                </button>
+              </div>
+
+              {show3D ? (
+                <div className="panel" style={{ height: 420, padding: 0, overflow: "hidden" }}>
+                  <MapScene />
+                </div>
+              ) : (
+                <MapGrid />
+              )}
+
+              <Leaderboard />
+              <BattleLog />
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

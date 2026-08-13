@@ -19,9 +19,19 @@ export const FACTION_LABEL: Record<Faction, string> = {
 };
 
 // One place to change the palette — flat UI and the R3F map both read from this.
+// Matches frontend/src/theme.css's --red/--blue/--green tokens.
 export const FACTION_COLOR: Record<Faction, string> = {
-  [Faction.NONE]: "#3a3a3a",
-  [Faction.RED]: "#c0392b",
-  [Faction.BLUE]: "#2980b9",
-  [Faction.GREEN]: "#27ae60",
+  [Faction.NONE]: "#4a463e",
+  [Faction.RED]: "#e0503a",
+  [Faction.BLUE]: "#3f8fe0",
+  [Faction.GREEN]: "#4fae5a",
+};
+
+// Shape backup for color, never rely on color alone (game-ui-design skill:
+// ~8% of men have red-green color vision deficiency).
+export const FACTION_GLYPH: Record<Faction, string> = {
+  [Faction.NONE]: "○",
+  [Faction.RED]: "▲",
+  [Faction.BLUE]: "◆",
+  [Faction.GREEN]: "■",
 };

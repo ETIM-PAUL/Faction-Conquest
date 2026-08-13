@@ -49,14 +49,18 @@ export function ResolveDrawing() {
   }
 
   return (
-    <section>
+    <section className="panel">
       <h2>Resolved state</h2>
-      {settledId === undefined && <p>Waiting for first drawing…</p>}
+      {settledId === undefined && <p style={{ color: "var(--text-muted)" }}>Waiting for first drawing…</p>}
       {settledId !== undefined && settledState?.winningTicket === 0n && (
-        <p>Drawing #{settledId.toString()} not settled yet — trigger battle above once eligible.</p>
+        <p style={{ color: "var(--text-muted)" }}>
+          Drawing #{settledId.toString()} not settled yet — trigger battle above once eligible.
+        </p>
       )}
       {settledId !== undefined && alreadyResolved === true && (
-        <p>Drawing #{settledId.toString()} already resolved — map is up to date.</p>
+        <p style={{ color: "var(--text-muted)" }}>
+          Drawing #{settledId.toString()} already resolved — map is up to date.
+        </p>
       )}
       {canResolve && (
         <>

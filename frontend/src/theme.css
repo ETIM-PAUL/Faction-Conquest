@@ -1,0 +1,36 @@
+/* Design tokens — dark "war table" theme (Build.md 4.2: torch-lit, amber tones).
+   Every component pulls color/spacing/type from here, nothing hardcoded downstream. */
+:root {
+  /* surface */
+  --bg: #15120d;
+  --panel: #221b13;
+  --panel-border: #4a3c28;
+
+  /* text */
+  --text: #f0e6d2;
+  --text-muted: #b8a888;
+
+  /* accent — CTAs, focus rings, "ready" states */
+  --accent: #e0a83f;
+  --accent-dim: #8a6a2a;
+
+  /* faction identity — paired with a glyph everywhere, never color alone */
+  --red: #e0503a;
+  --blue: #3f8fe0;
+  --green: #4fae5a;
+  --neutral: #4a463e;
+
+  /* spacing scale */
+  --space-1: 8px;
+  --space-2: 16px;
+  --space-3: 24px;
+  --space-4: 32px;
+
+  /* type scale (minimum 14px anywhere, per game-ui-design skill) */
+  --text-sm: 14px;
+  --text-base: 16px;
+  --text-lg: 18px;
+  --text-critical: 24px;
+
+  --radius: 6px;
+}

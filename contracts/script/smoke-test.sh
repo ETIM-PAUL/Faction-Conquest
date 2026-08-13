@@ -81,7 +81,9 @@ case "${1:-}" in
     ;;
 
   trigger)
-    fee=$(cast call "$JACKPOT_ADDRESS" "getEntropyCallbackFee()(uint256)" "${RPC[@]}")
+    # `cast call ...(uint256)` pretty-prints as "142500000000001 [1.425e14]" — strip
+    # everything after the first field or --value rejects it outright.
+    fee=$(cast call "$JACKPOT_ADDRESS" "getEntropyCallbackFee()(uint256)" "${RPC[@]}" | awk '{print $1}')
     echo "Calling runJackpot() with entropy fee = $fee wei..."
     cast send "$JACKPOT_ADDRESS" "runJackpot()" --value "$fee" "${RPC[@]}" "${SIGNER[@]}"
     ;;

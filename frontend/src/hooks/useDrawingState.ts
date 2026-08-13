@@ -27,5 +27,13 @@ export function useDrawingState() {
     query: { refetchInterval: 5_000 },
   });
 
-  return { drawingId, drawingState, entropyFee, ...rest };
+  // Rarely changes — long stale time is fine, avoids a redundant poll.
+  const { data: drawingDuration } = useReadContract({
+    address: JACKPOT_ADDRESS,
+    abi: JACKPOT_ABI,
+    functionName: "drawingDurationInSeconds",
+    query: { staleTime: 60_000 },
+  });
+
+  return { drawingId, drawingState, entropyFee, drawingDuration, ...rest };
 }

@@ -5,9 +5,10 @@ import { USDC_ABI } from "../contracts/Jackpot.abi";
 import { FACTION_WAR_ADDRESS, USDC_ADDRESS } from "../contracts/addresses";
 import { useDrawingState } from "../hooks/useDrawingState";
 
-/// Flat, unstyled attack form (Build.md phase 3 / section 4.3). Approves USDC
-/// to FactionWar once (if needed), then calls attack(normals, bonusball) —
-/// FactionWar itself forwards the real purchase to Jackpot.buyTickets.
+/// Attack form (Build.md phase 3 / section 4.3, restyled as a HUD panel).
+/// Approves USDC to FactionWar once (if needed), then calls
+/// attack(normals, bonusball) — FactionWar forwards the real purchase to
+/// Jackpot.buyTickets.
 export function AttackForm() {
   const { address } = useAccount();
   const { drawingState } = useDrawingState();
@@ -61,37 +62,47 @@ export function AttackForm() {
   }
 
   return (
-    <section>
+    <section className="panel">
       <h2>Attack a zone</h2>
-      <p>
-        Ball range: 1–{ballMax || "?"} · Bonusball: 1–{bonusballMax || "?"} · Ticket price:{" "}
-        {(Number(ticketPrice) / 1e6).toFixed(2)} USDC
-      </p>
-      <label>
-        Normals (comma-separated):{" "}
-        <input value={normalsInput} onChange={(e) => setNormalsInput(e.target.value)} />
-      </label>
-      <br />
-      <label>
-        Bonusball:{" "}
-        <input
-          type="number"
-          min={1}
-          max={bonusballMax || undefined}
-          value={bonusball}
-          onChange={(e) => setBonusball(Number(e.target.value))}
-        />
-      </label>
-      <br />
-      {needsApproval ? (
-        <button onClick={approve} disabled={isPending || isConfirming}>
-          Approve USDC
-        </button>
-      ) : (
-        <button onClick={attack} disabled={isPending || isConfirming}>
-          Buy ticket / attack
-        </button>
-      )}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: "var(--space-2)" }}>
+        <p style={{ color: "var(--text-muted)", marginBottom: 0 }}>
+          Ball range: 1–{ballMax || "?"} · Bonusball: 1–{bonusballMax || "?"}
+        </p>
+        <span className="text-critical">{(Number(ticketPrice) / 1e6).toFixed(2)} USDC</span>
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-1)" }}>
+        <label>
+          Normals (comma-separated)
+          <br />
+          <input
+            style={{ width: "100%" }}
+            value={normalsInput}
+            onChange={(e) => setNormalsInput(e.target.value)}
+          />
+        </label>
+        <label>
+          Bonusball
+          <br />
+          <input
+            type="number"
+            min={1}
+            max={bonusballMax || undefined}
+            value={bonusball}
+            onChange={(e) => setBonusball(Number(e.target.value))}
+          />
+        </label>
+      </div>
+      <div style={{ marginTop: "var(--space-2)" }}>
+        {needsApproval ? (
+          <button onClick={approve} disabled={isPending || isConfirming}>
+            Approve USDC
+          </button>
+        ) : (
+          <button onClick={attack} disabled={isPending || isConfirming}>
+            Buy ticket / attack
+          </button>
+        )}
+      </div>
     </section>
   );
 }
