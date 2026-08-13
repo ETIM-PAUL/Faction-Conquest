@@ -1,122 +1,45 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
-import './App.css'
+import { useState } from "react";
+import { useAccount } from "wagmi";
+import { ConnectWallet } from "./components/ConnectWallet";
+import { FactionSelect } from "./components/FactionSelect";
+import { AttackForm } from "./components/AttackForm";
+import { TriggerBattle } from "./components/TriggerBattle";
+import { ResolveDrawing } from "./components/ResolveDrawing";
+import { Leaderboard } from "./components/Leaderboard";
+import { MapGrid } from "./components/MapGrid";
+import { MapScene } from "./three/MapScene";
+import { FACTION_WAR_ADDRESS } from "./contracts/addresses";
 
 function App() {
-  const [count, setCount] = useState(0)
+  const { isConnected } = useAccount();
+  const [show3D, setShow3D] = useState(false);
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.tsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
+    <div style={{ padding: "1rem", fontFamily: "sans-serif" }}>
+      <h1>Faction Conquest</h1>
+      <ConnectWallet />
 
-      <div className="ticks"></div>
+      {!FACTION_WAR_ADDRESS && (
+        <p style={{ color: "orange" }}>
+          VITE_FACTION_WAR_ADDRESS is unset — deploy FactionWar (contracts/script/Deploy.s.sol) and set it in
+          .env before any faction/attack/battle actions will work.
+        </p>
+      )}
 
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
+      {isConnected && FACTION_WAR_ADDRESS && (
+        <>
+          <FactionSelect />
+          <AttackForm />
+          <TriggerBattle />
+          <ResolveDrawing />
+          <Leaderboard />
 
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+          <button onClick={() => setShow3D((v) => !v)}>{show3D ? "Show flat grid" : "Show 3D map (phase 4)"}</button>
+          {show3D ? <MapScene /> : <MapGrid />}
+        </>
+      )}
+    </div>
+  );
 }
 
-export default App
+export default App;

@@ -1,10 +1,13 @@
 // Mirrors `enum Faction` in FactionWar.sol — keep in sync by hand, it's tiny.
-export enum Faction {
-  NONE = 0,
-  RED = 1,
-  BLUE = 2,
-  GREEN = 3,
-}
+// A plain const object (not `enum`) because tsconfig has erasableSyntaxOnly on.
+export const Faction = {
+  NONE: 0,
+  RED: 1,
+  BLUE: 2,
+  GREEN: 3,
+} as const;
+
+export type Faction = (typeof Faction)[keyof typeof Faction];
 
 export const FACTIONS = [Faction.RED, Faction.BLUE, Faction.GREEN] as const;
 
