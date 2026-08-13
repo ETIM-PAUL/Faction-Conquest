@@ -1,26 +1,39 @@
-import { useAccount, useConnect, useDisconnect } from "wagmi";
+import { useAccount, useChainId, useConnect, useDisconnect, useSwitchChain } from "wagmi";
+import { baseSepolia } from "wagmi/chains";
 
 export function ConnectWallet() {
-  const { address, isConnected, chain } = useAccount();
-  const { connectors, connect } = useConnect();
+  const { address, isConnected } = useAccount();
+  const chainId = useChainId();
+  const { connectors, connect, isPending: isConnecting } = useConnect();
   const { disconnect } = useDisconnect();
+  const { switchChain, isPending: isSwitching } = useSwitchChain();
 
-  if (isConnected) {
+  if (!isConnected) {
+    const primary = connectors[0];
     return (
-      <p>
-        {address?.slice(0, 6)}…{address?.slice(-4)} on {chain?.name ?? "unknown chain"}{" "}
-        <button onClick={() => disconnect()}>Disconnect</button>
-      </p>
+      <button onClick={() => primary && connect({ connector: primary })} disabled={!primary || isConnecting}>
+        {isConnecting ? "Connecting…" : primary ? "Connect wallet" : "No wallet found"}
+      </button>
+    );
+  }
+
+  const wrongNetwork = chainId !== baseSepolia.id;
+
+  if (wrongNetwork) {
+    return (
+      <div style={{ display: "flex", alignItems: "center", gap: "var(--space-1)" }}>
+        <span style={{ color: "var(--accent)" }}>Wrong network</span>
+        <button onClick={() => switchChain({ chainId: baseSepolia.id })} disabled={isSwitching}>
+          {isSwitching ? "Switching…" : "Switch to Base Sepolia"}
+        </button>
+      </div>
     );
   }
 
   return (
-    <div>
-      {connectors.map((connector) => (
-        <button key={connector.id} onClick={() => connect({ connector })}>
-          Connect {connector.name}
-        </button>
-      ))}
-    </div>
+    <p style={{ margin: 0 }}>
+      {address?.slice(0, 6)}…{address?.slice(-4)} on {baseSepolia.name}{" "}
+      <button onClick={() => disconnect()}>Disconnect</button>
+    </p>
   );
 }

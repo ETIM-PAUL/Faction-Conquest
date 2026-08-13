@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { useAccount } from "wagmi";
 import { ConnectWallet } from "./components/ConnectWallet";
 import { FactionSelect } from "./components/FactionSelect";
 import { AttackForm } from "./components/AttackForm";
@@ -12,7 +11,6 @@ import { MapScene } from "./three/MapScene";
 import { FACTION_WAR_ADDRESS } from "./contracts/addresses";
 
 function App() {
-  const { isConnected } = useAccount();
   const [show3D, setShow3D] = useState(false);
 
   return (
@@ -43,11 +41,6 @@ function App() {
           </p>
         )}
 
-        {!isConnected && FACTION_WAR_ADDRESS && (
-          <p className="panel" style={{ color: "var(--accent)" }}>
-            You're browsing read-only. Connect your wallet to join a faction, attack zones, and trigger battles.
-          </p>
-        )}
 
         {FACTION_WAR_ADDRESS && (
           <div style={{ display: "flex", gap: "var(--space-3)", flexWrap: "wrap", alignItems: "flex-start" }}>
