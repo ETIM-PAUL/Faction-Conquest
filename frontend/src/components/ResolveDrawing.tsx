@@ -1,4 +1,4 @@
-import { useReadContract, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
+import { useAccount, useReadContract, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
 import { FACTION_WAR_ABI } from "../contracts/FactionWar.abi";
 import { JACKPOT_ABI } from "../contracts/Jackpot.abi";
 import { FACTION_WAR_ADDRESS, JACKPOT_ADDRESS } from "../contracts/addresses";
@@ -8,6 +8,7 @@ import { useDrawingState } from "../hooks/useDrawingState";
 /// (see llms.md "How to check if a drawing is settled"). Resolve it into
 /// zone captures once Jackpot has actually settled it.
 export function ResolveDrawing() {
+  const { isConnected } = useAccount();
   const { drawingId } = useDrawingState();
   const settledId = drawingId !== undefined && drawingId > 0n ? drawingId - 1n : undefined;
 
@@ -65,9 +66,13 @@ export function ResolveDrawing() {
       {canResolve && (
         <>
           <p>Drawing #{settledId?.toString()} settled and ready to resolve into zone captures.</p>
-          <button onClick={resolve} disabled={isPending || isConfirming}>
-            Resolve drawing
-          </button>
+          {!isConnected ? (
+            <p style={{ color: "var(--accent)" }}>Connect your wallet to resolve it (anyone can).</p>
+          ) : (
+            <button onClick={resolve} disabled={isPending || isConfirming}>
+              Resolve drawing
+            </button>
+          )}
         </>
       )}
     </section>

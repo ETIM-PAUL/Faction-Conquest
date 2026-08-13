@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useWaitForTransactionReceipt, useWriteContract } from "wagmi";
+import { useAccount, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
 import { FACTION_WAR_ABI } from "../contracts/FactionWar.abi";
 import { FACTION_WAR_ADDRESS } from "../contracts/addresses";
 import { usePlayerFaction } from "../hooks/useFactionWar";
@@ -65,6 +65,7 @@ function CooldownRing({ progress, ready, label }: { progress: number; label: str
 
 /// "Trigger this drawing and earn the Herald bonus" (Build.md section 4.3).
 export function TriggerBattle() {
+  const { isConnected } = useAccount();
   const { data: playerFaction } = usePlayerFaction();
   const { drawingState, entropyFee, drawingDuration } = useDrawingState();
   const now = useNow();
@@ -109,9 +110,13 @@ export function TriggerBattle() {
                 </span>{" "}
                 (entropy callback fee).
               </p>
-              <button onClick={trigger} disabled={isPending || isConfirming || entropyFee === undefined}>
-                Trigger battle
-              </button>
+              {!isConnected ? (
+                <p style={{ color: "var(--accent)" }}>Connect your wallet to trigger battle.</p>
+              ) : (
+                <button onClick={trigger} disabled={isPending || isConfirming || entropyFee === undefined}>
+                  Trigger battle
+                </button>
+              )}
             </>
           )}
         </div>

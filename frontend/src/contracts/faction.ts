@@ -9,7 +9,9 @@ export const Faction = {
 
 export type Faction = (typeof Faction)[keyof typeof Faction];
 
-export const FACTIONS = [Faction.RED, Faction.BLUE, Faction.GREEN] as const;
+// Display order only (RGB) — the enum values themselves (RED=1, BLUE=2, GREEN=3)
+// are fixed on-chain and unaffected by this ordering.
+export const FACTIONS = [Faction.RED, Faction.GREEN, Faction.BLUE] as const;
 
 export const FACTION_LABEL: Record<Faction, string> = {
   [Faction.NONE]: "Unclaimed",
