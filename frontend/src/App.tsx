@@ -43,7 +43,13 @@ function App() {
           </p>
         )}
 
-        {isConnected && FACTION_WAR_ADDRESS && (
+        {!isConnected && FACTION_WAR_ADDRESS && (
+          <p className="panel" style={{ color: "var(--accent)" }}>
+            You're browsing read-only. Connect your wallet to join a faction, attack zones, and trigger battles.
+          </p>
+        )}
+
+        {FACTION_WAR_ADDRESS && (
           <div style={{ display: "flex", gap: "var(--space-3)", flexWrap: "wrap", alignItems: "flex-start" }}>
             <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-2)", flex: "1 1 320px", minWidth: 320 }}>
               <FactionSelect />
@@ -55,7 +61,7 @@ function App() {
             <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-2)", flex: "2 1 480px", minWidth: 320 }}>
               <div style={{ display: "flex", justifyContent: "flex-end" }}>
                 <button onClick={() => setShow3D((v) => !v)}>
-                  {show3D ? "Show flat grid" : "Show 3D map (phase 4)"}
+                  {show3D ? "Show flat grid" : "Show 3D map"}
                 </button>
               </div>
 
