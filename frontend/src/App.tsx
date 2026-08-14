@@ -6,6 +6,7 @@ import { TriggerBattle } from "./components/TriggerBattle";
 import { ResolveDrawing } from "./components/ResolveDrawing";
 import { Leaderboard } from "./components/Leaderboard";
 import { BattleLog } from "./components/BattleLog";
+import { FactionChat } from "./components/FactionChat";
 import { MyTickets } from "./components/MyTickets";
 import { MapGrid } from "./components/MapGrid";
 import { MapScene } from "./three/MapScene";
@@ -70,6 +71,7 @@ function App() {
 
               <Leaderboard />
               <BattleLog />
+              <FactionChat />
             </div>
           </div>
         )}
