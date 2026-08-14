@@ -7,9 +7,6 @@ export const FACTION_WAR_ABI = [
     inputs: [
       { name: "_jackpot", type: "address", internalType: "address" },
       { name: "_usdc", type: "address", internalType: "address" },
-      { name: "_redReferrer", type: "address", internalType: "address" },
-      { name: "_blueReferrer", type: "address", internalType: "address" },
-      { name: "_greenReferrer", type: "address", internalType: "address" },
     ],
     stateMutability: "nonpayable",
   },
@@ -18,6 +15,13 @@ export const FACTION_WAR_ABI = [
     name: "FACTION_COUNT",
     inputs: [],
     outputs: [{ name: "", type: "uint8", internalType: "uint8" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "FULL_REFERRAL_SPLIT",
+    inputs: [],
+    outputs: [{ name: "", type: "uint256", internalType: "uint256" }],
     stateMutability: "view",
   },
   {
@@ -32,6 +36,13 @@ export const FACTION_WAR_ABI = [
   },
   {
     type: "function",
+    name: "claimFactionTreasury",
+    inputs: [{ name: "f", type: "uint8", internalType: "enum FactionWar.Faction" }],
+    outputs: [],
+    stateMutability: "nonpayable",
+  },
+  {
+    type: "function",
     name: "drawingResolved",
     inputs: [{ name: "", type: "uint256", internalType: "uint256" }],
     outputs: [{ name: "", type: "bool", internalType: "bool" }],
@@ -39,9 +50,9 @@ export const FACTION_WAR_ABI = [
   },
   {
     type: "function",
-    name: "factionReferrer",
+    name: "factionWarChest",
     inputs: [{ name: "", type: "uint8", internalType: "enum FactionWar.Faction" }],
-    outputs: [{ name: "", type: "address", internalType: "address" }],
+    outputs: [{ name: "", type: "uint256", internalType: "uint256" }],
     stateMutability: "view",
   },
   {
@@ -51,6 +62,7 @@ export const FACTION_WAR_ABI = [
     outputs: [
       { name: "territory", type: "uint256[]", internalType: "uint256[]" },
       { name: "herald", type: "uint256[]", internalType: "uint256[]" },
+      { name: "warChest", type: "uint256[]", internalType: "uint256[]" },
     ],
     stateMutability: "view",
   },
@@ -167,6 +179,26 @@ export const FACTION_WAR_ABI = [
   },
   {
     type: "event",
+    name: "WarChestClaimed",
+    inputs: [
+      { name: "faction", type: "uint8", indexed: true, internalType: "enum FactionWar.Faction" },
+      { name: "claimer", type: "address", indexed: true, internalType: "address" },
+      { name: "amount", type: "uint256", indexed: false, internalType: "uint256" },
+    ],
+    anonymous: false,
+  },
+  {
+    type: "event",
+    name: "WarChestFunded",
+    inputs: [
+      { name: "drawingId", type: "uint256", indexed: true, internalType: "uint256" },
+      { name: "totalSwept", type: "uint256", indexed: false, internalType: "uint256" },
+      { name: "shares", type: "uint256[]", indexed: false, internalType: "uint256[]" },
+    ],
+    anonymous: false,
+  },
+  {
+    type: "event",
     name: "ZoneAttacked",
     inputs: [
       { name: "drawingId", type: "uint256", indexed: true, internalType: "uint256" },
@@ -190,6 +222,7 @@ export const FACTION_WAR_ABI = [
   { type: "error", name: "AlreadyResolved", inputs: [] },
   { type: "error", name: "DrawingNotReady", inputs: [] },
   { type: "error", name: "DrawingNotSettled", inputs: [] },
+  { type: "error", name: "EmptyWarChest", inputs: [] },
   { type: "error", name: "InvalidFaction", inputs: [] },
   { type: "error", name: "NoFaction", inputs: [] },
   { type: "error", name: "RefundFailed", inputs: [] },

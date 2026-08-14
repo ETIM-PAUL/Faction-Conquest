@@ -48,8 +48,11 @@ $ anvil
 ### Deploy
 
 ```shell
-$ forge script script/Counter.s.sol:CounterScript --rpc-url <your_rpc_url> --private-key <your_private_key>
+$ forge script script/Deploy.s.sol --rpc-url base_sepolia --private-key <your_private_key> --broadcast
 ```
+
+See `../README.md` and `../BUILD_PLAN.md` for the actual FactionWar contract, its Megapot
+integration, and on-chain validation transcripts — this file is just Foundry's own boilerplate.
 
 ### Cast
 

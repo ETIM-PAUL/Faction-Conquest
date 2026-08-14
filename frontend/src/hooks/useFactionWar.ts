@@ -27,7 +27,7 @@ export function useMapState() {
   });
 }
 
-/// Leaderboard data: territory + Herald bonus per faction (phase 5).
+/// Leaderboard data: territory + Herald bonus + war chest (USDC) per faction (phase 5).
 export function useFactionScores() {
   return useReadContract({
     address: FACTION_WAR_ADDRESS,
@@ -40,10 +40,12 @@ export function useFactionScores() {
 export function factionScoreFor(
   territory: readonly bigint[] | undefined,
   herald: readonly bigint[] | undefined,
+  warChest: readonly bigint[] | undefined,
   faction: Faction,
 ) {
   return {
     territory: territory?.[faction] ?? 0n,
     herald: herald?.[faction] ?? 0n,
+    warChest: warChest?.[faction] ?? 0n,
   };
 }

@@ -68,6 +68,34 @@ export function BattleLog() {
     },
   });
 
+  useWatchContractEvent({
+    address: FACTION_WAR_ADDRESS,
+    abi: FACTION_WAR_ABI,
+    eventName: "WarChestFunded",
+    enabled: Boolean(FACTION_WAR_ADDRESS),
+    onLogs(logs) {
+      for (const log of logs) {
+        const { drawingId, totalSwept } = log.args;
+        if (totalSwept === undefined) continue;
+        push(`War chests funded: ${(Number(totalSwept) / 1e6).toFixed(4)} USDC swept from drawing #${drawingId}`);
+      }
+    },
+  });
+
+  useWatchContractEvent({
+    address: FACTION_WAR_ADDRESS,
+    abi: FACTION_WAR_ABI,
+    eventName: "WarChestClaimed",
+    enabled: Boolean(FACTION_WAR_ADDRESS),
+    onLogs(logs) {
+      for (const log of logs) {
+        const { faction, amount } = log.args;
+        if (faction === undefined || amount === undefined) continue;
+        push(`${factionTag(faction as Faction)} claimed their war chest: ${(Number(amount) / 1e6).toFixed(4)} USDC`);
+      }
+    },
+  });
+
   if (!FACTION_WAR_ADDRESS) return null;
 
   return (
