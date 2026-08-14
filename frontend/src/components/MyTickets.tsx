@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { decodeEventLog, zeroAddress } from "viem";
 import { useReadContract, useWriteContract } from "wagmi";
 import { waitForTransactionReceipt } from "wagmi/actions";
@@ -144,9 +144,22 @@ function TicketRow({ ticket, alreadyClaimed }: { ticket: PlayerTicket; alreadyCl
 /// claiming is a direct Jackpot.claimWinnings call, nothing to do with
 /// FactionWar. Closes the loop Build.md's mechanic otherwise leaves open:
 /// buying a ticket through the game can win the real Megapot jackpot.
+const PAGE_SIZE = 5;
+
 export function MyTickets() {
   const { tickets, loading } = usePlayerTickets();
   const { claimedIds } = useClaimedTickets();
+  const [page, setPage] = useState(0);
+
+  const pageCount = Math.max(1, Math.ceil(tickets.length / PAGE_SIZE));
+
+  // Clamp back onto a valid page if the ticket list shrinks/changes underneath us
+  // (e.g. after a refetch) so we never render an empty trailing page.
+  useEffect(() => {
+    if (page >= pageCount) setPage(pageCount - 1);
+  }, [page, pageCount]);
+
+  const pageTickets = tickets.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE);
 
   return (
     <section className="panel">
@@ -156,15 +169,37 @@ export function MyTickets() {
         <p style={{ color: "var(--text-muted)" }}>No tickets bought yet — attack a zone to buy one.</p>
       )}
       {tickets.length > 0 && (
-        <ul style={{ listStyle: "none", margin: 0, padding: 0 }}>
-          {tickets.map((t) => (
-            <TicketRow
-              key={t.txHash + t.ticketId.toString()}
-              ticket={t}
-              alreadyClaimed={claimedIds.has(t.ticketId.toString())}
-            />
-          ))}
-        </ul>
+        <>
+          <ul style={{ listStyle: "none", margin: 0, padding: 0 }}>
+            {pageTickets.map((t) => (
+              <TicketRow
+                key={t.txHash + t.ticketId.toString()}
+                ticket={t}
+                alreadyClaimed={claimedIds.has(t.ticketId.toString())}
+              />
+            ))}
+          </ul>
+          {pageCount > 1 && (
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginTop: "var(--space-2)",
+              }}
+            >
+              <button onClick={() => setPage((p) => Math.max(0, p - 1))} disabled={page === 0}>
+                ← Prev
+              </button>
+              <span style={{ color: "var(--text-muted)", fontSize: "var(--text-sm)" }}>
+                Page {page + 1} / {pageCount}
+              </span>
+              <button onClick={() => setPage((p) => Math.min(pageCount - 1, p + 1))} disabled={page >= pageCount - 1}>
+                Next →
+              </button>
+            </div>
+          )}
+        </>
       )}
     </section>
   );
