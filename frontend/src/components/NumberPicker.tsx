@@ -13,6 +13,8 @@ type RadioProps = {
   max: number;
   selected: number | null;
   onSelect: (n: number) => void;
+  disabledNumbers?: Set<number>;
+  disabledTitle?: string;
 };
 
 type Props = ToggleProps | RadioProps;
@@ -27,7 +29,7 @@ export function NumberPicker(props: Props) {
     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(40px, 1fr))", gap: 4 }}>
       {numbers.map((n) => {
         const isSelected = props.mode === "toggle" ? props.selected.includes(n) : props.selected === n;
-        const isOwnZone = props.mode === "toggle" && Boolean(props.disabledNumbers?.has(n));
+        const isDisabledNumber = !isSelected && Boolean(props.disabledNumbers?.has(n));
         const atLimit = props.mode === "toggle" && !isSelected && props.selected.length >= props.limit;
 
         return (
@@ -35,9 +37,9 @@ export function NumberPicker(props: Props) {
             key={n}
             type="button"
             onClick={() => (props.mode === "toggle" ? props.onToggle(n) : props.onSelect(n))}
-            disabled={atLimit || isOwnZone}
+            disabled={atLimit || isDisabledNumber}
             aria-pressed={isSelected}
-            title={isOwnZone ? props.disabledTitle : undefined}
+            title={isDisabledNumber ? props.disabledTitle : undefined}
             style={{
               minWidth: 40,
               minHeight: 40,
@@ -47,8 +49,8 @@ export function NumberPicker(props: Props) {
               background: isSelected ? "var(--accent)" : "var(--bg)",
               color: isSelected ? "#15120d" : "var(--text)",
               borderColor: isSelected ? "var(--accent)" : "var(--panel-border)",
-              opacity: isOwnZone ? 0.4 : 1,
-              cursor: isOwnZone ? "not-allowed" : undefined,
+              opacity: isDisabledNumber ? 0.4 : 1,
+              cursor: isDisabledNumber ? "not-allowed" : undefined,
             }}
           >
             {n}

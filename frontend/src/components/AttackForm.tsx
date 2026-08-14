@@ -122,7 +122,7 @@ export function AttackForm() {
     }
   }
 
-  const disabled = !isConnected || busy || !ready;
+  const disabled = !isConnected || !hasFaction || busy || !ready;
 
   let label = "Buy ticket / attack";
   if (step === "approving") label = "Approving USDC…";
@@ -177,16 +177,33 @@ export function AttackForm() {
       <p style={{ color: "var(--text-muted)", fontSize: "var(--text-sm)" }}>
         Normals — pick {NORMALS_REQUIRED} ({normals.length}/{NORMALS_REQUIRED})
       </p>
-      <NumberPicker mode="toggle" max={ballMax || 1} selected={normals} onToggle={toggleNormal} limit={NORMALS_REQUIRED} />
+      <NumberPicker
+        mode="toggle"
+        max={ballMax || 1}
+        selected={normals}
+        onToggle={toggleNormal}
+        limit={NORMALS_REQUIRED}
+        disabledNumbers={bonusball !== null ? new Set([bonusball]) : undefined}
+        disabledTitle="Already picked as your bonusball"
+      />
 
       <p style={{ color: "var(--text-muted)", fontSize: "var(--text-sm)", marginTop: "var(--space-2)" }}>
         Bonusball {bonusball !== null ? `— ${bonusball}` : ""}
       </p>
-      <NumberPicker mode="radio" max={bonusballMax || 1} selected={bonusball} onSelect={selectBonusball} />
+      <NumberPicker
+        mode="radio"
+        max={bonusballMax || 1}
+        selected={bonusball}
+        onSelect={selectBonusball}
+        disabledNumbers={new Set(normals)}
+        disabledTitle="Already picked as a normal"
+      />
 
       <div style={{ marginTop: "var(--space-2)" }}>
         {!isConnected ? (
           <p style={{ color: "var(--accent)" }}>Connect your wallet to attack.</p>
+        ) : !hasFaction ? (
+          <p style={{ color: "var(--accent)" }}>Join a faction to attack.</p>
         ) : (
           <button onClick={attackFlow} disabled={disabled}>
             {label}
