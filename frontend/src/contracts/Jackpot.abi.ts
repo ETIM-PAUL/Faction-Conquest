@@ -65,6 +65,42 @@ export const JACKPOT_ABI = [
     ],
     stateMutability: "view",
   },
+  {
+    type: "function",
+    name: "claimWinnings",
+    inputs: [{ name: "_userTicketIds", type: "uint256[]", internalType: "uint256[]" }],
+    outputs: [],
+    stateMutability: "nonpayable",
+  },
+  // Confirmed on-chain: topic0 0x1171a029...d37b372 matches every attack() purchase's
+  // Jackpot-side log in this session — field order/types verified against real logs.
+  {
+    type: "event",
+    name: "TicketPurchased",
+    inputs: [
+      { name: "recipient", type: "address", indexed: true },
+      { name: "currentDrawingId", type: "uint256", indexed: true },
+      { name: "source", type: "bytes32", indexed: true },
+      { name: "userTicketId", type: "uint256", indexed: false },
+      { name: "normals", type: "uint8[]", indexed: false },
+      { name: "bonusball", type: "uint8", indexed: false },
+      { name: "referralScheme", type: "bytes32", indexed: false },
+    ],
+    anonymous: false,
+  },
+  {
+    type: "event",
+    name: "TicketWinningsClaimed",
+    inputs: [
+      { name: "userAddress", type: "address", indexed: true },
+      { name: "drawingId", type: "uint256", indexed: true },
+      { name: "userTicketId", type: "uint256", indexed: false },
+      { name: "matchedNormals", type: "uint256", indexed: false },
+      { name: "bonusballMatch", type: "bool", indexed: false },
+      { name: "winningsAmount", type: "uint256", indexed: false },
+    ],
+    anonymous: false,
+  },
 ] as const;
 
 // USDC (mock ERC20 on Base Sepolia) — just approve/allowance/balanceOf.

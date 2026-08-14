@@ -9,7 +9,7 @@ phase-by-phase build status, on-chain validation transcripts, and known bugs/fix
 
 ## Megapot integration — how deep it goes
 
-This isn't a game that links out to Megapot; Megapot *is* the game loop, in three layers:
+This isn't a game that links out to Megapot; Megapot *is* the game loop, in four layers:
 
 1. **Ticket purchase = attack.** `FactionWar.attack(normals, bonusball)` buys one real ticket via
    `Jackpot.buyTickets`, tagging it to the caller's faction. No mock lottery — it's the live
@@ -26,6 +26,12 @@ This isn't a game that links out to Megapot; Megapot *is* the game loop, in thre
    `claimFactionTreasury` — real money, not a scoreboard number. See BUILD_PLAN.md's "War Chest"
    section for the full on-chain validation transcript (accrual, sweep, split, claim, all
    confirmed against the live contract).
+4. **Individual ticket winnings.** Tickets mint straight to the player (`attack()` passes
+   `msg.sender`, not FactionWar, as the recipient), so the real per-ticket Megapot jackpot is
+   still directly winnable and claimable — the "My tickets" panel reads Jackpot's own
+   `TicketPurchased` events and calls `claimWinnings` directly, entirely independent of
+   FactionWar. Validated on-chain against a real settled drawing (see BUILD_PLAN.md's "My
+   Tickets" section).
 
 Two mechanics stack on top of Megapot's own primitives without needing any off-chain
 infrastructure: the Herald race (whoever triggers settlement earns a bonus for their faction)

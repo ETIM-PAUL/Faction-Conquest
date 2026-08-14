@@ -6,6 +6,7 @@ import { TriggerBattle } from "./components/TriggerBattle";
 import { ResolveDrawing } from "./components/ResolveDrawing";
 import { Leaderboard } from "./components/Leaderboard";
 import { BattleLog } from "./components/BattleLog";
+import { MyTickets } from "./components/MyTickets";
 import { MapGrid } from "./components/MapGrid";
 import { MapScene } from "./three/MapScene";
 import { FACTION_WAR_ADDRESS } from "./contracts/addresses";
@@ -49,6 +50,7 @@ function App() {
               <AttackForm />
               <TriggerBattle />
               <ResolveDrawing />
+              <MyTickets />
             </div>
 
             <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-2)", flex: "2 1 480px", minWidth: 320 }}>
