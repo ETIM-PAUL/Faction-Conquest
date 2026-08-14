@@ -1,10 +1,13 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useAccount, useReadContract, useWriteContract } from "wagmi";
 import { waitForTransactionReceipt } from "wagmi/actions";
 import { FACTION_WAR_ABI } from "../contracts/FactionWar.abi";
 import { USDC_ABI } from "../contracts/Jackpot.abi";
 import { FACTION_WAR_ADDRESS, USDC_ADDRESS } from "../contracts/addresses";
+import { Faction } from "../contracts/faction";
 import { useDrawingState } from "../hooks/useDrawingState";
+import { usePlayerFaction, useMapState } from "../hooks/useFactionWar";
+import { TICKET_PURCHASED_EVENT } from "../hooks/usePlayerTickets";
 import { wagmiConfig } from "../wagmi";
 import { NumberPicker } from "./NumberPicker";
 
@@ -22,6 +25,8 @@ type Step = "idle" | "approving" | "attacking";
 export function AttackForm() {
   const { address, isConnected } = useAccount();
   const { drawingState } = useDrawingState();
+  const { data: playerFaction } = usePlayerFaction();
+  const { data: mapState } = useMapState();
   const [normals, setNormals] = useState<number[]>([]);
   const [bonusball, setBonusball] = useState<number | null>(null);
   const [step, setStep] = useState<Step>("idle");
@@ -30,6 +35,18 @@ export function AttackForm() {
   const ballMax = drawingState?.ballMax ?? 0;
   const bonusballMax = drawingState?.bonusballMax ?? 0;
   const ticketPrice = drawingState?.ticketPrice ?? 0n;
+
+  // A faction can't attack zones it already controls — no point spending on
+  // your own territory. Zone `n`'s controller is `controllers[n - 1]`.
+  const ownZones = useMemo(() => {
+    const zones = new Set<number>();
+    if (!mapState || !playerFaction || playerFaction === Faction.NONE) return zones;
+    const [, controllers] = mapState;
+    controllers.forEach((controller, i) => {
+      if (controller === playerFaction) zones.add(i + 1);
+    });
+    return zones;
+  }, [mapState, playerFaction]);
 
   const { data: allowance, refetch: refetchAllowance } = useReadContract({
     address: USDC_ADDRESS,
@@ -46,6 +63,7 @@ export function AttackForm() {
   const busy = step !== "idle";
 
   function toggleNormal(n: number) {
+    if (ownZones.has(n)) return;
     setNormals((prev) => (prev.includes(n) ? prev.filter((x) => x !== n) : [...prev, n]));
   }
 
@@ -55,6 +73,10 @@ export function AttackForm() {
 
   async function attackFlow() {
     if (!ready || bonusball === null) return;
+    if (normals.some((n) => ownZones.has(n))) {
+      setError("You can't attack a zone your own faction already controls.");
+      return;
+    }
     setError(null);
 
     try {
@@ -79,6 +101,7 @@ export function AttackForm() {
       });
       await waitForTransactionReceipt(wagmiConfig, { hash: attackHash });
       setNormals([]);
+      window.dispatchEvent(new Event(TICKET_PURCHASED_EVENT));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Transaction failed");
     } finally {
@@ -110,8 +133,17 @@ export function AttackForm() {
 
       <p style={{ color: "var(--text-muted)", fontSize: "var(--text-sm)" }}>
         Normals — pick {NORMALS_REQUIRED} ({normals.length}/{NORMALS_REQUIRED})
+        {ownZones.size > 0 && " — greyed-out zones are already yours"}
       </p>
-      <NumberPicker mode="toggle" max={ballMax || 1} selected={normals} onToggle={toggleNormal} limit={NORMALS_REQUIRED} />
+      <NumberPicker
+        mode="toggle"
+        max={ballMax || 1}
+        selected={normals}
+        onToggle={toggleNormal}
+        limit={NORMALS_REQUIRED}
+        disabledNumbers={ownZones}
+        disabledTitle="Your faction already controls this zone"
+      />
 
       <p style={{ color: "var(--text-muted)", fontSize: "var(--text-sm)", marginTop: "var(--space-2)" }}>
         Bonusball {bonusball !== null ? `— ${bonusball}` : ""}

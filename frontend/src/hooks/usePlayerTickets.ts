@@ -1,7 +1,12 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useAccount, usePublicClient } from "wagmi";
 import { JACKPOT_ABI } from "../contracts/Jackpot.abi";
 import { JACKPOT_ADDRESS } from "../contracts/addresses";
+
+// Cross-component signal: AttackForm fires this once an attack tx confirms
+// so MyTickets (a sibling, not a parent/child) can refetch without a shared
+// store. usePlayerTickets listens below.
+export const TICKET_PURCHASED_EVENT = "faction-war:ticket-purchased";
 
 export type PlayerTicket = {
   drawingId: bigint;
@@ -27,16 +32,14 @@ export function usePlayerTickets() {
   const [tickets, setTickets] = useState<PlayerTicket[]>([]);
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
+  const fetchTickets = useCallback(async () => {
     if (!address || !publicClient) {
       setTickets([]);
       return;
     }
 
-    let cancelled = false;
     setLoading(true);
-
-    (async () => {
+    try {
       const latest = await publicClient.getBlockNumber();
       const fromBlock = latest > BLOCK_LOOKBACK ? latest - BLOCK_LOOKBACK : 0n;
 
@@ -48,8 +51,6 @@ export function usePlayerTickets() {
         fromBlock,
         toBlock: "latest",
       });
-
-      if (cancelled) return;
 
       const parsed = logs
         .map((log) => {
@@ -69,15 +70,19 @@ export function usePlayerTickets() {
         .reverse(); // newest first
 
       setTickets(parsed);
+    } finally {
       setLoading(false);
-    })().catch(() => {
-      if (!cancelled) setLoading(false);
-    });
-
-    return () => {
-      cancelled = true;
-    };
+    }
   }, [address, publicClient]);
 
-  return { tickets, loading };
+  useEffect(() => {
+    fetchTickets();
+  }, [fetchTickets]);
+
+  useEffect(() => {
+    window.addEventListener(TICKET_PURCHASED_EVENT, fetchTickets);
+    return () => window.removeEventListener(TICKET_PURCHASED_EVENT, fetchTickets);
+  }, [fetchTickets]);
+
+  return { tickets, loading, refetch: fetchTickets };
 }

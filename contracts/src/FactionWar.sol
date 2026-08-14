@@ -47,6 +47,7 @@ contract FactionWar {
     mapping(Faction => uint256) public territoryCount;
     mapping(Faction => uint256) public heraldBonus;
     mapping(Faction => uint256) public factionWarChest; // claimable USDC, funded by referral fees
+    mapping(Faction => uint256) public factionPlayerCount; // headcount, for balanced auto-assignment
 
     uint256 public lastResolvedDrawing;
 
@@ -61,6 +62,7 @@ contract FactionWar {
 
     error InvalidFaction();
     error NoFaction();
+    error AlreadyJoined();
     error AlreadyResolved();
     error DrawingNotSettled();
     error DrawingNotReady();
@@ -74,11 +76,25 @@ contract FactionWar {
         usdc = IERC20(_usdc);
     }
 
-    /// @notice One-time (re-pickable) faction assignment for the caller.
-    function joinFaction(Faction f) external {
-        if (f == Faction.NONE || uint8(f) > FACTION_COUNT) revert InvalidFaction();
-        playerFaction[msg.sender] = f;
-        emit FactionJoined(msg.sender, f);
+    /// @notice One-time, permanent faction assignment for the caller — no manual pick,
+    /// no re-picking. Assigns to whichever faction currently has the fewest players so
+    /// factions stay roughly balanced instead of everyone piling onto one team.
+    function joinFaction() external {
+        if (playerFaction[msg.sender] != Faction.NONE) revert AlreadyJoined();
+
+        Faction assigned = Faction.RED;
+        uint256 lowest = factionPlayerCount[Faction.RED];
+        for (uint8 f = 2; f <= FACTION_COUNT; f++) {
+            uint256 count = factionPlayerCount[Faction(f)];
+            if (count < lowest) {
+                lowest = count;
+                assigned = Faction(f);
+            }
+        }
+
+        playerFaction[msg.sender] = assigned;
+        factionPlayerCount[assigned] += 1;
+        emit FactionJoined(msg.sender, assigned);
     }
 
     /// @notice Buy one real Megapot ticket on the caller's behalf, tagged to their faction.

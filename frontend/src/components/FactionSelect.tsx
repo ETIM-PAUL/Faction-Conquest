@@ -1,9 +1,12 @@
 import { useAccount, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
 import { FACTION_WAR_ABI } from "../contracts/FactionWar.abi";
 import { FACTION_WAR_ADDRESS } from "../contracts/addresses";
-import { FACTIONS, FACTION_COLOR, FACTION_GLYPH, FACTION_LABEL, type Faction } from "../contracts/faction";
+import { FACTION_COLOR, FACTION_GLYPH, FACTION_LABEL, Faction } from "../contracts/faction";
 import { usePlayerFaction } from "../hooks/useFactionWar";
 
+/// Faction assignment is permanent and balanced by the contract (whichever
+/// faction has the fewest players gets the next joiner) — there's no manual
+/// pick and no re-picking, so this is a single "join" action, not a chooser.
 export function FactionSelect() {
   const { isConnected } = useAccount();
   const { data: currentFaction, refetch } = usePlayerFaction();
@@ -13,57 +16,54 @@ export function FactionSelect() {
     query: { enabled: Boolean(hash) },
   });
 
-  function join(f: Faction) {
+  function join() {
     writeContract(
       {
         address: FACTION_WAR_ADDRESS,
         abi: FACTION_WAR_ABI,
         functionName: "joinFaction",
-        args: [f],
+        args: [],
       },
       { onSuccess: () => refetch() },
     );
   }
 
+  const joined = currentFaction !== undefined && currentFaction !== Faction.NONE;
+
   return (
     <section className="panel">
-      <h2>Choose a faction</h2>
-      <div style={{ display: "flex", gap: "var(--space-1)" }}>
-        {FACTIONS.map((f) => {
-          const selected = currentFaction === f;
-          return (
-            <button
-              key={f}
-              onClick={() => join(f)}
-              disabled={!isConnected || isPending || isConfirming}
-              aria-pressed={selected}
-              style={{
-                flex: 1,
-                minHeight: 64,
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                gap: 4,
-                border: selected ? "2px solid var(--accent)" : "1px solid var(--panel-border)",
-                boxShadow: selected ? "0 0 8px var(--accent)" : "none",
-                background: FACTION_COLOR[f],
-                color: "white",
-              }}
-            >
-              <span className="hud-text" style={{ fontSize: "1.5rem", lineHeight: 1 }} aria-hidden="true">
-                {FACTION_GLYPH[f]}
-                {selected ? " ✓" : ""}
-              </span>
-              <span className="hud-text">{FACTION_LABEL[f]}</span>
-            </button>
-          );
-        })}
-      </div>
+      <h2>Faction</h2>
       {!isConnected && <p style={{ color: "var(--accent)" }}>Connect your wallet to join a faction.</p>}
-      {currentFaction !== undefined && currentFaction !== 0 && (
-        <p>
-          You're on: {FACTION_GLYPH[currentFaction as Faction]} {FACTION_LABEL[currentFaction as Faction]}
-        </p>
+
+      {isConnected && !joined && (
+        <>
+          <p style={{ color: "var(--text-muted)", fontSize: "var(--text-sm)" }}>
+            You'll be assigned to whichever faction currently has the fewest players — permanent, no picking.
+          </p>
+          <button onClick={join} disabled={isPending || isConfirming}>
+            {isPending || isConfirming ? "Joining…" : "Join a faction"}
+          </button>
+        </>
+      )}
+
+      {isConnected && joined && (
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            padding: "var(--space-1) var(--space-2)",
+            borderRadius: "var(--radius)",
+            background: FACTION_COLOR[currentFaction as Faction],
+            color: "white",
+            width: "fit-content",
+          }}
+        >
+          <span className="hud-text" style={{ fontSize: "1.5rem", lineHeight: 1 }} aria-hidden="true">
+            {FACTION_GLYPH[currentFaction as Faction]}
+          </span>
+          <span className="hud-text">You're on: {FACTION_LABEL[currentFaction as Faction]}</span>
+        </div>
       )}
     </section>
   );

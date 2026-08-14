@@ -114,7 +114,8 @@ export function MapGrid() {
           <span className="pulse" style={{ display: "inline-block" }} aria-hidden="true">
             ●
           </span>{" "}
-          pulsing = contested, live leader shown
+          pulsing = contested (any attacker, not just you) — clears only when this zone's number is drawn as a
+          winning number
         </span>
       </div>
     </section>

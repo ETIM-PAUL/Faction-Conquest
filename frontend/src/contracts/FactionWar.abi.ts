@@ -5,8 +5,16 @@ export const FACTION_WAR_ABI = [
   {
     type: "constructor",
     inputs: [
-      { name: "_jackpot", type: "address", internalType: "address" },
-      { name: "_usdc", type: "address", internalType: "address" },
+      {
+        name: "_jackpot",
+        type: "address",
+        internalType: "address",
+      },
+      {
+        name: "_usdc",
+        type: "address",
+        internalType: "address",
+      },
     ],
     stateMutability: "nonpayable",
   },
@@ -14,22 +22,42 @@ export const FACTION_WAR_ABI = [
     type: "function",
     name: "FACTION_COUNT",
     inputs: [],
-    outputs: [{ name: "", type: "uint8", internalType: "uint8" }],
+    outputs: [
+      {
+        name: "",
+        type: "uint8",
+        internalType: "uint8",
+      },
+    ],
     stateMutability: "view",
   },
   {
     type: "function",
     name: "FULL_REFERRAL_SPLIT",
     inputs: [],
-    outputs: [{ name: "", type: "uint256", internalType: "uint256" }],
+    outputs: [
+      {
+        name: "",
+        type: "uint256",
+        internalType: "uint256",
+      },
+    ],
     stateMutability: "view",
   },
   {
     type: "function",
     name: "attack",
     inputs: [
-      { name: "normals", type: "uint8[]", internalType: "uint8[]" },
-      { name: "bonusball", type: "uint8", internalType: "uint8" },
+      {
+        name: "normals",
+        type: "uint8[]",
+        internalType: "uint8[]",
+      },
+      {
+        name: "bonusball",
+        type: "uint8",
+        internalType: "uint8",
+      },
     ],
     outputs: [],
     stateMutability: "nonpayable",
@@ -37,22 +65,71 @@ export const FACTION_WAR_ABI = [
   {
     type: "function",
     name: "claimFactionTreasury",
-    inputs: [{ name: "f", type: "uint8", internalType: "enum FactionWar.Faction" }],
+    inputs: [
+      {
+        name: "f",
+        type: "uint8",
+        internalType: "enum FactionWar.Faction",
+      },
+    ],
     outputs: [],
     stateMutability: "nonpayable",
   },
   {
     type: "function",
     name: "drawingResolved",
-    inputs: [{ name: "", type: "uint256", internalType: "uint256" }],
-    outputs: [{ name: "", type: "bool", internalType: "bool" }],
+    inputs: [
+      {
+        name: "",
+        type: "uint256",
+        internalType: "uint256",
+      },
+    ],
+    outputs: [
+      {
+        name: "",
+        type: "bool",
+        internalType: "bool",
+      },
+    ],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "factionPlayerCount",
+    inputs: [
+      {
+        name: "",
+        type: "uint8",
+        internalType: "enum FactionWar.Faction",
+      },
+    ],
+    outputs: [
+      {
+        name: "",
+        type: "uint256",
+        internalType: "uint256",
+      },
+    ],
     stateMutability: "view",
   },
   {
     type: "function",
     name: "factionWarChest",
-    inputs: [{ name: "", type: "uint8", internalType: "enum FactionWar.Faction" }],
-    outputs: [{ name: "", type: "uint256", internalType: "uint256" }],
+    inputs: [
+      {
+        name: "",
+        type: "uint8",
+        internalType: "enum FactionWar.Faction",
+      },
+    ],
+    outputs: [
+      {
+        name: "",
+        type: "uint256",
+        internalType: "uint256",
+      },
+    ],
     stateMutability: "view",
   },
   {
@@ -60,9 +137,21 @@ export const FACTION_WAR_ABI = [
     name: "getFactionScores",
     inputs: [],
     outputs: [
-      { name: "territory", type: "uint256[]", internalType: "uint256[]" },
-      { name: "herald", type: "uint256[]", internalType: "uint256[]" },
-      { name: "warChest", type: "uint256[]", internalType: "uint256[]" },
+      {
+        name: "territory",
+        type: "uint256[]",
+        internalType: "uint256[]",
+      },
+      {
+        name: "herald",
+        type: "uint256[]",
+        internalType: "uint256[]",
+      },
+      {
+        name: "warChest",
+        type: "uint256[]",
+        internalType: "uint256[]",
+      },
     ],
     stateMutability: "view",
   },
@@ -71,48 +160,108 @@ export const FACTION_WAR_ABI = [
     name: "getMapState",
     inputs: [],
     outputs: [
-      { name: "ballMax", type: "uint8", internalType: "uint8" },
-      { name: "controllers", type: "uint8[]", internalType: "enum FactionWar.Faction[]" },
-      { name: "liveCounts", type: "uint256[][]", internalType: "uint256[][]" },
+      {
+        name: "ballMax",
+        type: "uint8",
+        internalType: "uint8",
+      },
+      {
+        name: "controllers",
+        type: "uint8[]",
+        internalType: "enum FactionWar.Faction[]",
+      },
+      {
+        name: "liveCounts",
+        type: "uint256[][]",
+        internalType: "uint256[][]",
+      },
     ],
     stateMutability: "view",
   },
   {
     type: "function",
     name: "getZone",
-    inputs: [{ name: "number", type: "uint8", internalType: "uint8" }],
+    inputs: [
+      {
+        name: "number",
+        type: "uint8",
+        internalType: "uint8",
+      },
+    ],
     outputs: [
-      { name: "controller", type: "uint8", internalType: "enum FactionWar.Faction" },
-      { name: "lastCapturedDrawing", type: "uint256", internalType: "uint256" },
-      { name: "liveCounts", type: "uint256[]", internalType: "uint256[]" },
+      {
+        name: "controller",
+        type: "uint8",
+        internalType: "enum FactionWar.Faction",
+      },
+      {
+        name: "lastCapturedDrawing",
+        type: "uint256",
+        internalType: "uint256",
+      },
+      {
+        name: "liveCounts",
+        type: "uint256[]",
+        internalType: "uint256[]",
+      },
     ],
     stateMutability: "view",
   },
   {
     type: "function",
     name: "heraldBonus",
-    inputs: [{ name: "", type: "uint8", internalType: "enum FactionWar.Faction" }],
-    outputs: [{ name: "", type: "uint256", internalType: "uint256" }],
+    inputs: [
+      {
+        name: "",
+        type: "uint8",
+        internalType: "enum FactionWar.Faction",
+      },
+    ],
+    outputs: [
+      {
+        name: "",
+        type: "uint256",
+        internalType: "uint256",
+      },
+    ],
     stateMutability: "view",
   },
   {
     type: "function",
     name: "heraldByDrawing",
-    inputs: [{ name: "", type: "uint256", internalType: "uint256" }],
-    outputs: [{ name: "", type: "uint8", internalType: "enum FactionWar.Faction" }],
+    inputs: [
+      {
+        name: "",
+        type: "uint256",
+        internalType: "uint256",
+      },
+    ],
+    outputs: [
+      {
+        name: "",
+        type: "uint8",
+        internalType: "enum FactionWar.Faction",
+      },
+    ],
     stateMutability: "view",
   },
   {
     type: "function",
     name: "jackpot",
     inputs: [],
-    outputs: [{ name: "", type: "address", internalType: "contract IJackpot" }],
+    outputs: [
+      {
+        name: "",
+        type: "address",
+        internalType: "contract IJackpot",
+      },
+    ],
     stateMutability: "view",
   },
   {
     type: "function",
     name: "joinFaction",
-    inputs: [{ name: "f", type: "uint8", internalType: "enum FactionWar.Faction" }],
+    inputs: [],
     outputs: [],
     stateMutability: "nonpayable",
   },
@@ -120,28 +269,64 @@ export const FACTION_WAR_ABI = [
     type: "function",
     name: "lastResolvedDrawing",
     inputs: [],
-    outputs: [{ name: "", type: "uint256", internalType: "uint256" }],
+    outputs: [
+      {
+        name: "",
+        type: "uint256",
+        internalType: "uint256",
+      },
+    ],
     stateMutability: "view",
   },
   {
     type: "function",
     name: "playerFaction",
-    inputs: [{ name: "", type: "address", internalType: "address" }],
-    outputs: [{ name: "", type: "uint8", internalType: "enum FactionWar.Faction" }],
+    inputs: [
+      {
+        name: "",
+        type: "address",
+        internalType: "address",
+      },
+    ],
+    outputs: [
+      {
+        name: "",
+        type: "uint8",
+        internalType: "enum FactionWar.Faction",
+      },
+    ],
     stateMutability: "view",
   },
   {
     type: "function",
     name: "resolveDrawing",
-    inputs: [{ name: "drawingId", type: "uint256", internalType: "uint256" }],
+    inputs: [
+      {
+        name: "drawingId",
+        type: "uint256",
+        internalType: "uint256",
+      },
+    ],
     outputs: [],
     stateMutability: "nonpayable",
   },
   {
     type: "function",
     name: "territoryCount",
-    inputs: [{ name: "", type: "uint8", internalType: "enum FactionWar.Faction" }],
-    outputs: [{ name: "", type: "uint256", internalType: "uint256" }],
+    inputs: [
+      {
+        name: "",
+        type: "uint8",
+        internalType: "enum FactionWar.Faction",
+      },
+    ],
+    outputs: [
+      {
+        name: "",
+        type: "uint256",
+        internalType: "uint256",
+      },
+    ],
     stateMutability: "view",
   },
   {
@@ -155,16 +340,37 @@ export const FACTION_WAR_ABI = [
     type: "function",
     name: "usdc",
     inputs: [],
-    outputs: [{ name: "", type: "address", internalType: "contract IERC20" }],
+    outputs: [
+      {
+        name: "",
+        type: "address",
+        internalType: "contract IERC20",
+      },
+    ],
     stateMutability: "view",
   },
   {
     type: "event",
     name: "BattleTriggered",
     inputs: [
-      { name: "drawingId", type: "uint256", indexed: true, internalType: "uint256" },
-      { name: "faction", type: "uint8", indexed: true, internalType: "enum FactionWar.Faction" },
-      { name: "caller", type: "address", indexed: false, internalType: "address" },
+      {
+        name: "drawingId",
+        type: "uint256",
+        indexed: true,
+        internalType: "uint256",
+      },
+      {
+        name: "faction",
+        type: "uint8",
+        indexed: true,
+        internalType: "enum FactionWar.Faction",
+      },
+      {
+        name: "caller",
+        type: "address",
+        indexed: false,
+        internalType: "address",
+      },
     ],
     anonymous: false,
   },
@@ -172,8 +378,18 @@ export const FACTION_WAR_ABI = [
     type: "event",
     name: "FactionJoined",
     inputs: [
-      { name: "player", type: "address", indexed: true, internalType: "address" },
-      { name: "faction", type: "uint8", indexed: false, internalType: "enum FactionWar.Faction" },
+      {
+        name: "player",
+        type: "address",
+        indexed: true,
+        internalType: "address",
+      },
+      {
+        name: "faction",
+        type: "uint8",
+        indexed: false,
+        internalType: "enum FactionWar.Faction",
+      },
     ],
     anonymous: false,
   },
@@ -181,9 +397,24 @@ export const FACTION_WAR_ABI = [
     type: "event",
     name: "WarChestClaimed",
     inputs: [
-      { name: "faction", type: "uint8", indexed: true, internalType: "enum FactionWar.Faction" },
-      { name: "claimer", type: "address", indexed: true, internalType: "address" },
-      { name: "amount", type: "uint256", indexed: false, internalType: "uint256" },
+      {
+        name: "faction",
+        type: "uint8",
+        indexed: true,
+        internalType: "enum FactionWar.Faction",
+      },
+      {
+        name: "claimer",
+        type: "address",
+        indexed: true,
+        internalType: "address",
+      },
+      {
+        name: "amount",
+        type: "uint256",
+        indexed: false,
+        internalType: "uint256",
+      },
     ],
     anonymous: false,
   },
@@ -191,9 +422,24 @@ export const FACTION_WAR_ABI = [
     type: "event",
     name: "WarChestFunded",
     inputs: [
-      { name: "drawingId", type: "uint256", indexed: true, internalType: "uint256" },
-      { name: "totalSwept", type: "uint256", indexed: false, internalType: "uint256" },
-      { name: "shares", type: "uint256[]", indexed: false, internalType: "uint256[]" },
+      {
+        name: "drawingId",
+        type: "uint256",
+        indexed: true,
+        internalType: "uint256",
+      },
+      {
+        name: "totalSwept",
+        type: "uint256",
+        indexed: false,
+        internalType: "uint256",
+      },
+      {
+        name: "shares",
+        type: "uint256[]",
+        indexed: false,
+        internalType: "uint256[]",
+      },
     ],
     anonymous: false,
   },
@@ -201,11 +447,36 @@ export const FACTION_WAR_ABI = [
     type: "event",
     name: "ZoneAttacked",
     inputs: [
-      { name: "drawingId", type: "uint256", indexed: true, internalType: "uint256" },
-      { name: "faction", type: "uint8", indexed: true, internalType: "enum FactionWar.Faction" },
-      { name: "normals", type: "uint8[]", indexed: false, internalType: "uint8[]" },
-      { name: "bonusball", type: "uint8", indexed: false, internalType: "uint8" },
-      { name: "player", type: "address", indexed: true, internalType: "address" },
+      {
+        name: "drawingId",
+        type: "uint256",
+        indexed: true,
+        internalType: "uint256",
+      },
+      {
+        name: "faction",
+        type: "uint8",
+        indexed: true,
+        internalType: "enum FactionWar.Faction",
+      },
+      {
+        name: "normals",
+        type: "uint8[]",
+        indexed: false,
+        internalType: "uint8[]",
+      },
+      {
+        name: "bonusball",
+        type: "uint8",
+        indexed: false,
+        internalType: "uint8",
+      },
+      {
+        name: "player",
+        type: "address",
+        indexed: true,
+        internalType: "address",
+      },
     ],
     anonymous: false,
   },
@@ -213,19 +484,75 @@ export const FACTION_WAR_ABI = [
     type: "event",
     name: "ZonesResolved",
     inputs: [
-      { name: "drawingId", type: "uint256", indexed: true, internalType: "uint256" },
-      { name: "capturedZones", type: "uint8[]", indexed: false, internalType: "uint8[]" },
-      { name: "winningFactions", type: "uint8[]", indexed: false, internalType: "enum FactionWar.Faction[]" },
+      {
+        name: "drawingId",
+        type: "uint256",
+        indexed: true,
+        internalType: "uint256",
+      },
+      {
+        name: "capturedZones",
+        type: "uint8[]",
+        indexed: false,
+        internalType: "uint8[]",
+      },
+      {
+        name: "winningFactions",
+        type: "uint8[]",
+        indexed: false,
+        internalType: "enum FactionWar.Faction[]",
+      },
     ],
     anonymous: false,
   },
-  { type: "error", name: "AlreadyResolved", inputs: [] },
-  { type: "error", name: "DrawingNotReady", inputs: [] },
-  { type: "error", name: "DrawingNotSettled", inputs: [] },
-  { type: "error", name: "EmptyWarChest", inputs: [] },
-  { type: "error", name: "InvalidFaction", inputs: [] },
-  { type: "error", name: "NoFaction", inputs: [] },
-  { type: "error", name: "RefundFailed", inputs: [] },
-  { type: "error", name: "UsdcApproveFailed", inputs: [] },
-  { type: "error", name: "UsdcTransferFailed", inputs: [] },
+  {
+    type: "error",
+    name: "AlreadyJoined",
+    inputs: [],
+  },
+  {
+    type: "error",
+    name: "AlreadyResolved",
+    inputs: [],
+  },
+  {
+    type: "error",
+    name: "DrawingNotReady",
+    inputs: [],
+  },
+  {
+    type: "error",
+    name: "DrawingNotSettled",
+    inputs: [],
+  },
+  {
+    type: "error",
+    name: "EmptyWarChest",
+    inputs: [],
+  },
+  {
+    type: "error",
+    name: "InvalidFaction",
+    inputs: [],
+  },
+  {
+    type: "error",
+    name: "NoFaction",
+    inputs: [],
+  },
+  {
+    type: "error",
+    name: "RefundFailed",
+    inputs: [],
+  },
+  {
+    type: "error",
+    name: "UsdcApproveFailed",
+    inputs: [],
+  },
+  {
+    type: "error",
+    name: "UsdcTransferFailed",
+    inputs: [],
+  },
 ] as const;

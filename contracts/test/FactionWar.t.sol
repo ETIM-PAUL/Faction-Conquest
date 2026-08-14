@@ -31,14 +31,21 @@ contract FactionWarTest is Test {
             usdc.approve(address(war), type(uint256).max);
         }
 
-        vm.prank(redPlayer);
-        war.joinFaction(FactionWar.Faction.RED);
-        vm.prank(bluePlayer1);
-        war.joinFaction(FactionWar.Faction.BLUE);
-        vm.prank(bluePlayer2);
-        war.joinFaction(FactionWar.Faction.BLUE);
-        vm.prank(greenPlayer);
-        war.joinFaction(FactionWar.Faction.GREEN);
+        // joinFaction() is now balanced-auto-assign only (no manual pick), but these
+        // tests need specific players on specific teams to exercise multi-faction zone
+        // contests deterministically — write playerFaction storage directly instead.
+        _setFaction(redPlayer, FactionWar.Faction.RED);
+        _setFaction(bluePlayer1, FactionWar.Faction.BLUE);
+        _setFaction(bluePlayer2, FactionWar.Faction.BLUE);
+        _setFaction(greenPlayer, FactionWar.Faction.GREEN);
+    }
+
+    /// @dev playerFaction is the 2nd non-constant/non-immutable state variable
+    /// (slot 1) — mapping(address => Faction) public playerFaction. Bypasses
+    /// joinFaction's balancing logic to pin a player to an exact faction for tests.
+    function _setFaction(address player, FactionWar.Faction f) internal {
+        bytes32 slot = keccak256(abi.encode(player, uint256(1)));
+        vm.store(address(war), slot, bytes32(uint256(uint8(f))));
     }
 
     function _normals() internal pure returns (uint8[] memory n) {
@@ -50,10 +57,39 @@ contract FactionWarTest is Test {
         n[4] = 5;
     }
 
-    function test_joinFaction_revertsOnNone() public {
-        vm.expectRevert(FactionWar.InvalidFaction.selector);
-        vm.prank(noFactionPlayer);
-        war.joinFaction(FactionWar.Faction.NONE);
+    function test_joinFaction_revertsIfAlreadyJoined() public {
+        vm.expectRevert(FactionWar.AlreadyJoined.selector);
+        vm.prank(redPlayer);
+        war.joinFaction();
+    }
+
+    function test_joinFaction_balancesAcrossFactions() public {
+        // Fresh war: RED/BLUE/GREEN all start at 0 headcount.
+        FactionWar freshWar = new FactionWar(address(jackpot), address(usdc));
+        address p1 = makeAddr("p1");
+        address p2 = makeAddr("p2");
+        address p3 = makeAddr("p3");
+        address p4 = makeAddr("p4");
+
+        vm.prank(p1);
+        freshWar.joinFaction();
+        assertEq(uint8(freshWar.playerFaction(p1)), uint8(FactionWar.Faction.RED), "first joiner: tie -> RED");
+
+        vm.prank(p2);
+        freshWar.joinFaction();
+        assertEq(uint8(freshWar.playerFaction(p2)), uint8(FactionWar.Faction.BLUE), "RED=1: BLUE is lowest");
+
+        vm.prank(p3);
+        freshWar.joinFaction();
+        assertEq(uint8(freshWar.playerFaction(p3)), uint8(FactionWar.Faction.GREEN), "RED=1,BLUE=1: GREEN is lowest");
+
+        vm.prank(p4);
+        freshWar.joinFaction();
+        assertEq(uint8(freshWar.playerFaction(p4)), uint8(FactionWar.Faction.RED), "all tied at 1: RED wins tie");
+
+        assertEq(freshWar.factionPlayerCount(FactionWar.Faction.RED), 2);
+        assertEq(freshWar.factionPlayerCount(FactionWar.Faction.BLUE), 1);
+        assertEq(freshWar.factionPlayerCount(FactionWar.Faction.GREEN), 1);
     }
 
     function test_attack_revertsWithoutFaction() public {

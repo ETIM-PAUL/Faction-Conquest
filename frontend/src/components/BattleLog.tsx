@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useWatchContractEvent } from "wagmi";
 import { FACTION_WAR_ABI } from "../contracts/FactionWar.abi";
 import { FACTION_WAR_ADDRESS } from "../contracts/addresses";
 import { FACTION_GLYPH, FACTION_LABEL, type Faction } from "../contracts/faction";
 
 const MAX_VISIBLE = 5;
+const STORAGE_KEY = "faction-war:battle-log";
 
 type Entry = { id: string; text: string };
 
@@ -12,12 +13,27 @@ function factionTag(f: Faction) {
   return `${FACTION_GLYPH[f]} ${FACTION_LABEL[f]}`;
 }
 
+// Entries only ever arrive via live event subscriptions below, so without
+// persistence a page refresh loses everything until new events fire.
+function loadEntries(): Entry[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? (JSON.parse(raw) as Entry[]) : [];
+  } catch {
+    return [];
+  }
+}
+
 /// Notification Queue Management pattern (game-ui-design skill): newest on
 /// top, capped visible count, brief fade-in — turns the contract's own
 /// events into a live feed instead of requiring a block explorer to see
 /// what's happening.
 export function BattleLog() {
-  const [entries, setEntries] = useState<Entry[]>([]);
+  const [entries, setEntries] = useState<Entry[]>(loadEntries);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+  }, [entries]);
 
   function push(text: string) {
     setEntries((prev) => [{ id: `${Date.now()}-${Math.random()}`, text }, ...prev].slice(0, MAX_VISIBLE));
