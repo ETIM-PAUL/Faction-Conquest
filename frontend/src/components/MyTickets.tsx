@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { decodeEventLog } from "viem";
+import { decodeEventLog, zeroAddress } from "viem";
 import { useReadContract, useWriteContract } from "wagmi";
 import { waitForTransactionReceipt } from "wagmi/actions";
-import { JACKPOT_ABI } from "../contracts/Jackpot.abi";
+import { JACKPOT_ABI, PAYOUT_CALCULATOR_ABI } from "../contracts/Jackpot.abi";
 import { JACKPOT_ADDRESS } from "../contracts/addresses";
 import { useClaimedTickets } from "../hooks/useClaimedTickets";
 import { usePlayerTickets, type PlayerTicket } from "../hooks/usePlayerTickets";
@@ -42,6 +42,29 @@ function TicketRow({ ticket, alreadyClaimed }: { ticket: PlayerTicket; alreadyCl
 
   const matched = winning ? matchCount(ticket.normals, winning[0]) : null;
   const bonusMatch = winning ? winning[1] === ticket.bonusball : null;
+
+  // Preview what this ticket is worth before spending gas on claimWinnings — see
+  // Jackpot.abi.ts for the tierId encoding (normalMatches * 2 + bonusballMatch) and where
+  // this pattern is confirmed against Megapot's own docs.
+  const { data: tierIds } = useReadContract({
+    address: JACKPOT_ADDRESS,
+    abi: JACKPOT_ABI,
+    functionName: "getTicketTierIds",
+    args: [[ticket.ticketId]],
+    query: { enabled: settled },
+  });
+  const tierId = tierIds?.[0];
+
+  const payoutCalculator = settled ? drawingState.payoutCalculator : undefined;
+  const { data: tierPayouts } = useReadContract({
+    address: payoutCalculator,
+    abi: PAYOUT_CALCULATOR_ABI,
+    functionName: "getExpectedDrawingTierPayouts",
+    args: settled ? [ticket.drawingId, drawingState.prizePool, drawingState.ballMax, drawingState.bonusballMax] : undefined,
+    query: { enabled: settled && Boolean(payoutCalculator) && payoutCalculator !== zeroAddress },
+  });
+  const expectedPayout = tierId !== undefined && tierPayouts ? tierPayouts[Number(tierId)] : undefined;
+  const worthClaiming = expectedPayout !== undefined && expectedPayout > 0n;
 
   async function claim() {
     setStatus("claiming");
@@ -93,14 +116,23 @@ function TicketRow({ ticket, alreadyClaimed }: { ticket: PlayerTicket; alreadyCl
               ? `Matched ${matched}/5 normals${bonusMatch ? " + bonusball" : ""}`
               : "Checking…"}
         </p>
+        {settled && !alreadyClaimed && !resultText && (
+          <p style={{ color: worthClaiming ? "var(--accent)" : "var(--text-muted)", fontSize: "var(--text-sm)", marginBottom: 0 }}>
+            {expectedPayout === undefined
+              ? "Checking payout…"
+              : worthClaiming
+                ? `Estimated payout: ${(Number(expectedPayout) / 1e6).toFixed(4)} USDC`
+                : "No payout on this ticket — claiming would only cost gas"}
+          </p>
+        )}
         {resultText && <p style={{ color: "var(--accent)", fontSize: "var(--text-sm)", marginBottom: 0 }}>{resultText}</p>}
         {alreadyClaimed && !resultText && (
           <p style={{ color: "var(--text-muted)", fontSize: "var(--text-sm)", marginBottom: 0 }}>Already claimed</p>
         )}
       </div>
-      {settled && status !== "claimed" && !alreadyClaimed && (
+      {settled && status !== "claimed" && !alreadyClaimed && worthClaiming && (
         <button onClick={claim} disabled={status === "claiming"}>
-          {status === "claiming" ? "Claiming…" : "Claim winnings"}
+          {status === "claiming" ? "Claiming…" : `Claim ${(Number(expectedPayout) / 1e6).toFixed(4)} USDC`}
         </button>
       )}
     </li>

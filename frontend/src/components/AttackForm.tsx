@@ -113,6 +113,7 @@ export function AttackForm() {
       });
       await waitForTransactionReceipt(wagmiConfig, { hash: attackHash });
       setNormals([]);
+      setBonusball(null);
       window.dispatchEvent(new Event(TICKET_PURCHASED_EVENT));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Transaction failed");

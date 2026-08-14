@@ -1,73 +1,217 @@
-# Faction Conquest
+# ⚔ Faction Conquest
 
-A Megapot-native territory war on Base Sepolia. Players join a faction, attack numbered zones by
-buying real Megapot tickets, and the real nightly drawing decides who controls the map.
+**A Megapot-native territory war.** Join a faction, attack numbered zones by buying *real*
+Megapot tickets, and let the real nightly drawing decide who controls the map — no mock
+lottery, no off-chain simulation, no separate "game currency."
 
-Full spec in [Build.md](./Build.md); Megapot integration reference in [llms.md](./llms.md);
-phase-by-phase build status, on-chain validation transcripts, and known bugs/fixes in
-[BUILD_PLAN.md](./BUILD_PLAN.md).
+Built for the **Best Game Powered by Megapot** track. Judging weighs *depth of Megapot
+integration* at 30% — the single biggest slice — which is why this isn't a game that links out
+to Megapot, it's a game where Megapot **is** the game loop. See [below](#megapot-integration--how-deep-it-goes)
+for the four layers that make that true.
+
+> Deployed on Base Sepolia (chain ID `84532`). Full spec in [Build.md](./Build.md); Megapot
+> integration reference in [llms.md](./llms.md); phase-by-phase build log, on-chain validation
+> transcripts, and bugs found/fixed in [BUILD_PLAN.md](./BUILD_PLAN.md).
+
+---
+
+## The pitch
+
+Lotteries are usually solitary — buy a ticket, wait, check if you won, repeat. Faction Conquest
+turns Megapot's real nightly drawing into a **team territory war**: every ticket you buy is an
+attack on a zone (the zone is literally the ticket number), every drawing is a battle, and the
+map is permanent — captures accumulate forever, they never reset. Winning zones makes your whole
+team's future tickets cheaper. You can still win the actual Megapot jackpot on your own ticket at
+the same time. Nothing about the core lottery is faked or mocked to make this work.
+
+## How it plays
+
+1. **Join a faction.** One-time, auto-balanced assignment (RED / BLUE / GREEN) — no stacking one team.
+2. **Attack a zone.** Pick 5 numbers + a bonusball, same as any Megapot ticket — except each
+   number you pick is a zone you're attacking for your faction.
+3. **Race to trigger the drawing.** Whoever pays to settle that night's real drawing becomes the
+   **Herald** for their faction — a bonus baked into the war chest split (see below).
+4. **The real drawing decides everything.** When the winning numbers land, whichever faction
+   bought the most tickets on each drawn number captures that zone. Permanently.
+5. **Get paid two ways.** Your own ticket can still hit the real Megapot jackpot (claimable
+   directly, independent of factions) — and your faction's territory makes every future attack
+   cheaper for your whole team, funded by a shared war chest.
+
+---
 
 ## Megapot integration — how deep it goes
 
-This isn't a game that links out to Megapot; Megapot *is* the game loop, in four layers:
+Four layers, all against the live Base Sepolia `Jackpot` contract, no shortcuts:
 
 1. **Ticket purchase = attack.** `FactionWar.attack(normals, bonusball)` buys one real ticket via
-   `Jackpot.buyTickets`, tagging it to the caller's faction. No mock lottery — it's the live
-   Base Sepolia Jackpot, real USDC, real ticket price read live from `getDrawingState`.
+   `Jackpot.buyTickets`, tagging it to the caller's faction. Real USDC, real ticket price read
+   live from `getDrawingState` — never hardcoded.
 2. **Real drawing settlement = combat resolution.** `FactionWar.triggerBattle()` calls
    `Jackpot.runJackpot()` (paying the live entropy fee) to settle that night's real drawing.
    `resolveDrawing()` reads the actual winning numbers via `getUnpackedTicket` and awards each
    drawn zone to whichever faction bought the most real tickets on that number. The map is
    permanent — captures persist across drawings.
-3. **Referral fees = the war chest.** `FactionWar` is the referrer on every attack (verified
-   on-chain that Jackpot allows self-referral). The real USDC referral fees Megapot pays out
-   accrue to the contract and get swept + split across factions proportional to territory on
-   every `resolveDrawing`. Any player on a faction can claim their faction's whole pot via
-   `claimFactionTreasury` — real money, not a scoreboard number. See BUILD_PLAN.md's "War Chest"
-   section for the full on-chain validation transcript (accrual, sweep, split, claim, all
-   confirmed against the live contract).
+3. **Referral fees fund a war chest that's spent as a ticket-price discount.** `FactionWar` is
+   the referrer on every attack (verified on-chain that Jackpot allows self-referral). The real
+   USDC referral fees Megapot pays out accrue to the contract and get swept + split across
+   factions on every `resolveDrawing`, weighted by **territory controlled and accumulated Herald
+   bonuses** — triggering settlement earns your faction a real share, not just a leaderboard
+   number. The chest is never withdrawn: it self-subsidizes `attack()`'s price on a tiered curve
+   (25% / 50% / 75% territory share → 5% / 10% / 20% off), capped at 10% of the chest's balance
+   per attack so one player can't drain it and lock teammates out. Faction members can also top
+   the chest up directly via `depositToWarChest`.
 4. **Individual ticket winnings.** Tickets mint straight to the player (`attack()` passes
-   `msg.sender`, not FactionWar, as the recipient), so the real per-ticket Megapot jackpot is
-   still directly winnable and claimable — the "My tickets" panel reads Jackpot's own
+   `msg.sender`, not `FactionWar`, as the recipient), so the real per-ticket Megapot jackpot is
+   still directly winnable and claimable — the "My Tickets" panel reads Jackpot's own
    `TicketPurchased` events and calls `claimWinnings` directly, entirely independent of
-   FactionWar. Validated on-chain against a real settled drawing (see BUILD_PLAN.md's "My
-   Tickets" section).
+   `FactionWar`.
 
-Two mechanics stack on top of Megapot's own primitives without needing any off-chain
-infrastructure: the Herald race (whoever triggers settlement earns a bonus for their faction)
-and the war chest claim race (whoever claims first for their team takes the whole pot).
+Two mechanics stack on top of Megapot's own primitives without any off-chain infrastructure: the
+**Herald race** (whoever triggers settlement earns their faction a share of the war chest) and
+**faction-funded discounts** (territory dominance literally makes your team's tickets cheaper).
 
-## Layout
+On-chain validation transcripts (real testnet wallets, real drawings, real USDC) for the
+attack/settle/resolve loop and the original war-chest sweep are in
+[BUILD_PLAN.md](./BUILD_PLAN.md). The discount tiers, Herald-weighted split, and chest deposits
+are newer and covered by the Foundry suite below — see [Status](#status) for what's been
+re-validated on-chain since.
+
+---
+
+## Features
+
+- 🏴 **Faction system** — auto-balanced, permanent assignment across 3 factions.
+- ⚔ **Attack = real ticket purchase**, tagged to a zone and a faction.
+- 🗺 **Permanent territory map** — flat grid view and a 3D map (React Three Fiber).
+- 🏆 **Herald race** — pay to trigger the nightly settlement, earn your faction a war-chest share.
+- 💰 **War chest** — funded by real referral fees *and* direct faction deposits, weighted by
+  territory + Herald bonuses, spent automatically as a tiered ticket-price discount.
+- 🎟 **My Tickets** — track and claim your own real Megapot jackpot winnings, independent of the
+  faction game.
+- 📜 **Live battle log** — every attack, trigger, resolution, discount, and chest event streamed
+  from on-chain logs.
+- 💬 **Faction chat** — wallet-gated, per-faction (Supabase).
+
+---
+
+## Architecture
 
 ```
-contracts/   Foundry project — FactionWar.sol, tests, deploy script, smoke-test.sh
-frontend/    Vite + React + TS + wagmi/viem + React Three Fiber
-Build.md     Original build brief
-llms.md      Megapot developer integration guide
-BUILD_PLAN.md  Phase-by-phase checklist, on-chain validation transcripts, bugs found/fixed
+Player Wallet
+     │
+     ▼
+┌─────────────────┐        attack() / triggerBattle() / resolveDrawing()
+│   FactionWar     │───────────────────────────────────────────────────┐
+│  (this repo)     │                                                   │
+└─────────────────┘                                                   ▼
+     │  ▲                                                    ┌──────────────────┐
+     │  │ tallies, territory,                                │  Jackpot          │
+     │  │ war chest, discounts                                │  (real Megapot)   │
+     │  ▼                                                    └──────────────────┘
+┌─────────────────┐                                                   │
+│ Frontend (React) │◀──────────────────────────────────────────────────┘
+│ wagmi/viem reads  │        buyTickets / runJackpot / claimWinnings
+│ + live event logs │        (real USDC, real drawings)
+└─────────────────┘
 ```
+
+`FactionWar` never holds custody of a player's winnings or replaces any Jackpot mechanic — it's
+a thin, stateful wrapper that *tags* real purchases with a faction and *reacts* to real
+settlement, then layers territory/war-chest game state on top.
+
+## Tech stack
+
+| Layer | Stack |
+|---|---|
+| Contracts | Solidity 0.8.24, Foundry (build/test/deploy) |
+| Frontend | Vite, React 19, TypeScript, wagmi + viem, React Three Fiber |
+| Chat | Supabase (wallet-gated faction channels) |
+| Chain | Base Sepolia (`84532`), real Megapot `Jackpot` + USDC |
+
+---
 
 ## Quickstart
 
 ```bash
 # Contracts
 cd contracts
-cp .env.example .env   # fill in PRIVATE_KEY, RPC URL
-forge test              # 9 tests, all passing
+cp .env.example .env      # fill in PRIVATE_KEY, BASE_SEPOLIA_RPC_URL
+forge test                # 15 tests, all passing
 forge script script/Deploy.s.sol --rpc-url base_sepolia --broadcast
 
 # Frontend
 cd ../frontend
-cp .env.example .env   # fill in VITE_FACTION_WAR_ADDRESS from the deploy above
+cp .env.example .env      # fill in VITE_FACTION_WAR_ADDRESS from the deploy above
 npm install
 npm run dev
 ```
 
+### Regenerating the ABI after a contract change
+
+```bash
+cd contracts
+forge inspect FactionWar abi --json > /tmp/abi.json
+# then rebuild frontend/src/contracts/FactionWar.abi.ts from it (see the file's own header comment)
+```
+
+## Project layout
+
+```
+contracts/   Foundry project — FactionWar.sol, tests, deploy script, smoke-test.sh
+frontend/    Vite + React + TS + wagmi/viem + React Three Fiber
+supabase/    Faction chat auth + migrations
+Build.md     Original build brief
+llms.md      Megapot developer integration guide
+BUILD_PLAN.md  Phase-by-phase checklist, on-chain validation transcripts, bugs found/fixed
+```
+
+---
+
+## Testing
+
+```bash
+cd contracts && forge test -vv
+```
+
+15/15 passing, covering: faction join/balancing, attack tallying, tie-break resolution, double-
+resolve guard, territory/Herald bookkeeping, the war-chest sweep (including the Herald-weighted
+split), direct chest deposits, and the territory-tier discount (including its per-attack chest
+cap).
+
 ## Status
 
-`FactionWar` is deployed and validated end-to-end against the live Base Sepolia `Jackpot` —
-real ticket purchases, a real contested 2-faction capture, real drawing settlement, and the war
-chest's full accrue → sweep → split → claim cycle have all been exercised on-chain, not just in
-Foundry tests (transcripts in BUILD_PLAN.md). Frontend builds clean and is wired to the live
-deployment; browser-based end-to-end verification and the 3D map's capture animation are the
-remaining open items — see BUILD_PLAN.md's phase tracker.
+- **Core loop (attack → trigger → resolve → capture)** — on-chain validated against real Base
+  Sepolia drawings with two funded wallets, including a genuine contested 2-vs-1 capture. See
+  BUILD_PLAN.md's Phase 2 transcript.
+- **War chest accrual/sweep** — on-chain validated end-to-end (accrue → safe deferral when
+  untargeted → sweep → proportional split → payout) against real referral fees. See BUILD_PLAN.md's
+  "War Chest" section.
+- **Territory-tier discounts, Herald-weighted split, direct chest deposits** — implemented,
+  covered by the Foundry suite, and **redeployed** to Base Sepolia at
+  [`0x71e37bEbE2aDf42EEC21AfBCf44cFdF7aef1aFD5`](https://sepolia.basescan.org/address/0x71e37bEbE2aDf42EEC21AfBCf44cFdF7aef1aFD5)
+  (`contracts/.env` and `frontend/.env` both point at it). Fresh on-chain transactions
+  exercising the new discount/deposit/Herald-weight paths on *this* deployment haven't been run
+  yet — that's the next validation pass, distinct from the Phase 2 / War Chest transcripts in
+  BUILD_PLAN.md, which were captured against the prior deployment.
+- **My Tickets (individual jackpot claim)** — on-chain validated against a real settled drawing;
+  now also previews expected payout via Megapot's `getTicketTierIds` +
+  `PayoutCalculator.getExpectedDrawingTierPayouts` before claiming, so a $0 ticket never costs gas
+  to find out.
+- **Frontend** — builds and type-checks clean, wired to the live deployment; full click-through
+  browser verification of the newest features (discount UI, deposit form, payout preview,
+  claimed-ticket persistence) is the next step before demo.
+
+## Roadmap
+
+- [x] Redeploy `FactionWar` with the discount/Herald-weight/deposit changes.
+- [ ] Run a fresh on-chain validation pass against the new deployment (attack with a discount
+      active, deposit to a chest, confirm a Herald-weighted split).
+- [ ] 3D map polish — capture particle burst, camera focus-in on resolution (Build.md Phase 4).
+- [ ] Contested-zone glow/height-encoded intensity on the 3D map.
+- [ ] Demo video.
+
+---
+
+## License
+
+MIT

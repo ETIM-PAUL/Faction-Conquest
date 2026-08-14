@@ -72,6 +72,17 @@ export const JACKPOT_ABI = [
     outputs: [],
     stateMutability: "nonpayable",
   },
+  // Preview a ticket's payout before spending gas on claimWinnings: tierId = normalMatches * 2 +
+  // bonusballMatch (tiers 0 and 2 pay nothing). Pair with PAYOUT_CALCULATOR_ABI's
+  // getExpectedDrawingTierPayouts, called against the drawing's own `payoutCalculator` address —
+  // confirmed against https://llms.megapot.io/tasks/claim-winnings.
+  {
+    type: "function",
+    name: "getTicketTierIds",
+    inputs: [{ name: "_ticketIds", type: "uint256[]", internalType: "uint256[]" }],
+    outputs: [{ name: "tierIds", type: "uint256[]", internalType: "uint256[]" }],
+    stateMutability: "view",
+  },
   // Confirmed on-chain: topic0 0x1171a029...d37b372 matches every attack() purchase's
   // Jackpot-side log in this session — field order/types verified against real logs.
   {
@@ -100,6 +111,26 @@ export const JACKPOT_ABI = [
       { name: "winningsAmount", type: "uint256", indexed: false },
     ],
     anonymous: false,
+  },
+] as const;
+
+// Per-drawing payout calculator (address comes from DrawingState.payoutCalculator — it's not a
+// fixed address, read it live per drawing rather than hardcoding one). getExpectedDrawingTierPayouts
+// returns a fixed-size 12-slot array; drawingTierPayouts[tierId] is that tier's per-ticket USDC
+// payout (6 decimals) for the given drawing. Confirmed against
+// https://llms.megapot.io/tasks/claim-winnings.
+export const PAYOUT_CALCULATOR_ABI = [
+  {
+    type: "function",
+    name: "getExpectedDrawingTierPayouts",
+    inputs: [
+      { name: "_drawingId", type: "uint256", internalType: "uint256" },
+      { name: "_prizePool", type: "uint256", internalType: "uint256" },
+      { name: "_normalMax", type: "uint8", internalType: "uint8" },
+      { name: "_bonusballMax", type: "uint8", internalType: "uint8" },
+    ],
+    outputs: [{ name: "drawingTierPayouts", type: "uint256[12]", internalType: "uint256[12]" }],
+    stateMutability: "view",
   },
 ] as const;
 
