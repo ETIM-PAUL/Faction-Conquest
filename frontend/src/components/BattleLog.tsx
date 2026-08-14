@@ -101,13 +101,16 @@ export function BattleLog() {
   useWatchContractEvent({
     address: FACTION_WAR_ADDRESS,
     abi: FACTION_WAR_ABI,
-    eventName: "WarChestClaimed",
+    eventName: "TicketDiscounted",
     enabled: Boolean(FACTION_WAR_ADDRESS),
     onLogs(logs) {
       for (const log of logs) {
-        const { faction, amount } = log.args;
-        if (faction === undefined || amount === undefined) continue;
-        push(`${factionTag(faction as Faction)} claimed their war chest: ${(Number(amount) / 1e6).toFixed(4)} USDC`);
+        const { faction, discountBps, discountAmount } = log.args;
+        if (faction === undefined || discountBps === undefined || discountAmount === undefined) continue;
+        push(
+          `${factionTag(faction as Faction)} attack got a ${(Number(discountBps) / 100).toFixed(0)}% territory discount ` +
+            `(${(Number(discountAmount) / 1e6).toFixed(4)} USDC from the war chest)`,
+        );
       }
     },
   });

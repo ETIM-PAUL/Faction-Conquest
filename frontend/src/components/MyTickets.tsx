@@ -4,6 +4,7 @@ import { useReadContract, useWriteContract } from "wagmi";
 import { waitForTransactionReceipt } from "wagmi/actions";
 import { JACKPOT_ABI } from "../contracts/Jackpot.abi";
 import { JACKPOT_ADDRESS } from "../contracts/addresses";
+import { useClaimedTickets } from "../hooks/useClaimedTickets";
 import { usePlayerTickets, type PlayerTicket } from "../hooks/usePlayerTickets";
 import { wagmiConfig } from "../wagmi";
 
@@ -12,7 +13,11 @@ function matchCount(ticketNormals: readonly number[], winningNormals: readonly n
   return ticketNormals.filter((n) => winningSet.has(n)).length;
 }
 
-function TicketRow({ ticket }: { ticket: PlayerTicket }) {
+function TicketRow({ ticket, alreadyClaimed }: { ticket: PlayerTicket; alreadyClaimed: boolean }) {
+  // "claimed" here is just optimistic UI for the instant after a successful tx —
+  // `alreadyClaimed` (derived on-chain from TicketWinningsClaimed logs, see
+  // useClaimedTickets) is the actual source of truth and is what survives a
+  // remount/reload.
   const [status, setStatus] = useState<"idle" | "claiming" | "claimed" | "error">("idle");
   const [resultText, setResultText] = useState<string | null>(null);
   const { writeContractAsync } = useWriteContract();
@@ -89,8 +94,11 @@ function TicketRow({ ticket }: { ticket: PlayerTicket }) {
               : "Checking…"}
         </p>
         {resultText && <p style={{ color: "var(--accent)", fontSize: "var(--text-sm)", marginBottom: 0 }}>{resultText}</p>}
+        {alreadyClaimed && !resultText && (
+          <p style={{ color: "var(--text-muted)", fontSize: "var(--text-sm)", marginBottom: 0 }}>Already claimed</p>
+        )}
       </div>
-      {settled && status !== "claimed" && (
+      {settled && status !== "claimed" && !alreadyClaimed && (
         <button onClick={claim} disabled={status === "claiming"}>
           {status === "claiming" ? "Claiming…" : "Claim winnings"}
         </button>
@@ -106,6 +114,7 @@ function TicketRow({ ticket }: { ticket: PlayerTicket }) {
 /// buying a ticket through the game can win the real Megapot jackpot.
 export function MyTickets() {
   const { tickets, loading } = usePlayerTickets();
+  const { claimedIds } = useClaimedTickets();
 
   return (
     <section className="panel">
@@ -117,7 +126,11 @@ export function MyTickets() {
       {tickets.length > 0 && (
         <ul style={{ listStyle: "none", margin: 0, padding: 0 }}>
           {tickets.map((t) => (
-            <TicketRow key={t.txHash + t.ticketId.toString()} ticket={t} />
+            <TicketRow
+              key={t.txHash + t.ticketId.toString()}
+              ticket={t}
+              alreadyClaimed={claimedIds.has(t.ticketId.toString())}
+            />
           ))}
         </ul>
       )}

@@ -20,6 +20,19 @@ export const FACTION_WAR_ABI = [
   },
   {
     type: "function",
+    name: "BPS_DENOMINATOR",
+    inputs: [],
+    outputs: [
+      {
+        name: "",
+        type: "uint256",
+        internalType: "uint256",
+      },
+    ],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
     name: "FACTION_COUNT",
     inputs: [],
     outputs: [
@@ -34,6 +47,110 @@ export const FACTION_WAR_ABI = [
   {
     type: "function",
     name: "FULL_REFERRAL_SPLIT",
+    inputs: [],
+    outputs: [
+      {
+        name: "",
+        type: "uint256",
+        internalType: "uint256",
+      },
+    ],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "HERALD_WEIGHT",
+    inputs: [],
+    outputs: [
+      {
+        name: "",
+        type: "uint256",
+        internalType: "uint256",
+      },
+    ],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "MAX_CHEST_BPS_PER_ATTACK",
+    inputs: [],
+    outputs: [
+      {
+        name: "",
+        type: "uint256",
+        internalType: "uint256",
+      },
+    ],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "TIER1_DISCOUNT_BPS",
+    inputs: [],
+    outputs: [
+      {
+        name: "",
+        type: "uint256",
+        internalType: "uint256",
+      },
+    ],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "TIER1_TERRITORY_BPS",
+    inputs: [],
+    outputs: [
+      {
+        name: "",
+        type: "uint256",
+        internalType: "uint256",
+      },
+    ],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "TIER2_DISCOUNT_BPS",
+    inputs: [],
+    outputs: [
+      {
+        name: "",
+        type: "uint256",
+        internalType: "uint256",
+      },
+    ],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "TIER2_TERRITORY_BPS",
+    inputs: [],
+    outputs: [
+      {
+        name: "",
+        type: "uint256",
+        internalType: "uint256",
+      },
+    ],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "TIER3_DISCOUNT_BPS",
+    inputs: [],
+    outputs: [
+      {
+        name: "",
+        type: "uint256",
+        internalType: "uint256",
+      },
+    ],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "TIER3_TERRITORY_BPS",
     inputs: [],
     outputs: [
       {
@@ -64,12 +181,12 @@ export const FACTION_WAR_ABI = [
   },
   {
     type: "function",
-    name: "claimFactionTreasury",
+    name: "depositToWarChest",
     inputs: [
       {
-        name: "f",
-        type: "uint8",
-        internalType: "enum FactionWar.Faction",
+        name: "amount",
+        type: "uint256",
+        internalType: "uint256",
       },
     ],
     outputs: [],
@@ -126,6 +243,40 @@ export const FACTION_WAR_ABI = [
     outputs: [
       {
         name: "",
+        type: "uint256",
+        internalType: "uint256",
+      },
+    ],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "getAttackQuote",
+    inputs: [
+      {
+        name: "player",
+        type: "address",
+        internalType: "address",
+      },
+    ],
+    outputs: [
+      {
+        name: "ticketPrice",
+        type: "uint256",
+        internalType: "uint256",
+      },
+      {
+        name: "discountBps",
+        type: "uint256",
+        internalType: "uint256",
+      },
+      {
+        name: "discountAmount",
+        type: "uint256",
+        internalType: "uint256",
+      },
+      {
+        name: "finalPrice",
         type: "uint256",
         internalType: "uint256",
       },
@@ -395,7 +546,50 @@ export const FACTION_WAR_ABI = [
   },
   {
     type: "event",
-    name: "WarChestClaimed",
+    name: "TicketDiscounted",
+    inputs: [
+      {
+        name: "drawingId",
+        type: "uint256",
+        indexed: true,
+        internalType: "uint256",
+      },
+      {
+        name: "faction",
+        type: "uint8",
+        indexed: true,
+        internalType: "enum FactionWar.Faction",
+      },
+      {
+        name: "player",
+        type: "address",
+        indexed: true,
+        internalType: "address",
+      },
+      {
+        name: "discountBps",
+        type: "uint256",
+        indexed: false,
+        internalType: "uint256",
+      },
+      {
+        name: "discountAmount",
+        type: "uint256",
+        indexed: false,
+        internalType: "uint256",
+      },
+      {
+        name: "pricePaid",
+        type: "uint256",
+        indexed: false,
+        internalType: "uint256",
+      },
+    ],
+    anonymous: false,
+  },
+  {
+    type: "event",
+    name: "WarChestDeposited",
     inputs: [
       {
         name: "faction",
@@ -404,7 +598,7 @@ export const FACTION_WAR_ABI = [
         internalType: "enum FactionWar.Faction",
       },
       {
-        name: "claimer",
+        name: "depositor",
         type: "address",
         indexed: true,
         internalType: "address",
@@ -527,11 +721,6 @@ export const FACTION_WAR_ABI = [
   },
   {
     type: "error",
-    name: "EmptyWarChest",
-    inputs: [],
-  },
-  {
-    type: "error",
     name: "InvalidFaction",
     inputs: [],
   },
@@ -553,6 +742,11 @@ export const FACTION_WAR_ABI = [
   {
     type: "error",
     name: "UsdcTransferFailed",
+    inputs: [],
+  },
+  {
+    type: "error",
+    name: "ZeroAmount",
     inputs: [],
   },
 ] as const;

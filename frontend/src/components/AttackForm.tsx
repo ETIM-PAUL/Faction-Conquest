@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useAccount, useReadContract, useWriteContract } from "wagmi";
 import { waitForTransactionReceipt } from "wagmi/actions";
 import { FACTION_WAR_ABI } from "../contracts/FactionWar.abi";
@@ -6,10 +6,18 @@ import { USDC_ABI } from "../contracts/Jackpot.abi";
 import { FACTION_WAR_ADDRESS, USDC_ADDRESS } from "../contracts/addresses";
 import { Faction } from "../contracts/faction";
 import { useDrawingState } from "../hooks/useDrawingState";
-import { usePlayerFaction, useMapState } from "../hooks/useFactionWar";
+import { usePlayerFaction, useFactionScores, factionScoreFor } from "../hooks/useFactionWar";
 import { TICKET_PURCHASED_EVENT } from "../hooks/usePlayerTickets";
 import { wagmiConfig } from "../wagmi";
 import { NumberPicker } from "./NumberPicker";
+
+// Mirrors FactionWar.sol's tier constants — kept in sync by hand, it's tiny
+// (see BPS_DENOMINATOR / TIER*_TERRITORY_BPS / TIER*_DISCOUNT_BPS).
+const DISCOUNT_TIERS = [
+  { territoryPct: 25, discountPct: 5 },
+  { territoryPct: 50, discountPct: 10 },
+  { territoryPct: 75, discountPct: 20 },
+] as const;
 
 const NORMALS_REQUIRED = 5;
 
@@ -26,7 +34,6 @@ export function AttackForm() {
   const { address, isConnected } = useAccount();
   const { drawingState } = useDrawingState();
   const { data: playerFaction } = usePlayerFaction();
-  const { data: mapState } = useMapState();
   const [normals, setNormals] = useState<number[]>([]);
   const [bonusball, setBonusball] = useState<number | null>(null);
   const [step, setStep] = useState<Step>("idle");
@@ -36,17 +43,27 @@ export function AttackForm() {
   const bonusballMax = drawingState?.bonusballMax ?? 0;
   const ticketPrice = drawingState?.ticketPrice ?? 0n;
 
-  // A faction can't attack zones it already controls — no point spending on
-  // your own territory. Zone `n`'s controller is `controllers[n - 1]`.
-  const ownZones = useMemo(() => {
-    const zones = new Set<number>();
-    if (!mapState || !playerFaction || playerFaction === Faction.NONE) return zones;
-    const [, controllers] = mapState;
-    controllers.forEach((controller, i) => {
-      if (controller === playerFaction) zones.add(i + 1);
-    });
-    return zones;
-  }, [mapState, playerFaction]);
+  // Territory-tier discount, subsidized from the caller's faction war chest —
+  // shown before they commit to a transaction (FactionWar.getAttackQuote).
+  const { data: quote } = useReadContract({
+    address: FACTION_WAR_ADDRESS,
+    abi: FACTION_WAR_ABI,
+    functionName: "getAttackQuote",
+    args: address ? [address] : undefined,
+    query: { enabled: Boolean(address) && Boolean(FACTION_WAR_ADDRESS), refetchInterval: 5_000 },
+  });
+  const [, discountBps, discountAmount, finalPrice] = quote ?? [0n, 0n, 0n, 0n];
+  const hasDiscount = discountAmount > 0n;
+  const payablePrice = hasDiscount ? finalPrice : ticketPrice;
+
+  // Same numbers that drive getAttackQuote's tier check, read here purely to
+  // explain to the player *why* they do or don't have a discount right now.
+  const { data: scores } = useFactionScores();
+  const [territory, , warChest] = scores ?? [undefined, undefined, undefined];
+  const hasFaction = playerFaction !== undefined && playerFaction !== Faction.NONE;
+  const score = hasFaction ? factionScoreFor(territory, undefined, warChest, playerFaction) : null;
+  const territoryPct = hasFaction && ballMax > 0 && score ? (Number(score.territory) * 100) / ballMax : 0;
+  const nextTier = DISCOUNT_TIERS.find((t) => territoryPct < t.territoryPct);
 
   const { data: allowance, refetch: refetchAllowance } = useReadContract({
     address: USDC_ADDRESS,
@@ -58,12 +75,11 @@ export function AttackForm() {
 
   const { writeContractAsync } = useWriteContract();
 
-  const needsApproval = (allowance ?? 0n) < ticketPrice;
+  const needsApproval = (allowance ?? 0n) < payablePrice;
   const ready = normals.length === NORMALS_REQUIRED && bonusball !== null;
   const busy = step !== "idle";
 
   function toggleNormal(n: number) {
-    if (ownZones.has(n)) return;
     setNormals((prev) => (prev.includes(n) ? prev.filter((x) => x !== n) : [...prev, n]));
   }
 
@@ -73,10 +89,6 @@ export function AttackForm() {
 
   async function attackFlow() {
     if (!ready || bonusball === null) return;
-    if (normals.some((n) => ownZones.has(n))) {
-      setError("You can't attack a zone your own faction already controls.");
-      return;
-    }
     setError(null);
 
     try {
@@ -124,26 +136,47 @@ export function AttackForm() {
           display: "flex",
           justifyContent: "space-between",
           alignItems: "baseline",
-          marginBottom: "var(--space-2)",
+          marginBottom: hasDiscount ? 0 : "var(--space-2)",
         }}
       >
         <p style={{ color: "var(--text-muted)", marginBottom: 0 }}>Ticket price</p>
-        <span className="text-critical">{(Number(ticketPrice) / 1e6).toFixed(2)} USDC</span>
+        {hasDiscount ? (
+          <span>
+            <span style={{ color: "var(--text-muted)", textDecoration: "line-through", marginRight: "var(--space-1)" }}>
+              {(Number(ticketPrice) / 1e6).toFixed(2)}
+            </span>
+            <span className="text-critical">{(Number(payablePrice) / 1e6).toFixed(2)} USDC</span>
+          </span>
+        ) : (
+          <span className="text-critical">{(Number(ticketPrice) / 1e6).toFixed(2)} USDC</span>
+        )}
       </div>
+      {!hasFaction ? (
+        <p style={{ color: "var(--text-muted)", fontSize: "var(--text-sm)", marginBottom: "var(--space-2)" }}>
+          Join a faction to see discount eligibility.
+        </p>
+      ) : hasDiscount ? (
+        <p style={{ color: "var(--text-muted)", fontSize: "var(--text-sm)", marginBottom: "var(--space-2)" }}>
+          🏰 {(Number(discountBps) / 100).toFixed(0)}% territory discount — {(Number(discountAmount) / 1e6).toFixed(4)}{" "}
+          USDC subsidized from your faction's war chest ({territoryPct.toFixed(0)}% territory controlled)
+        </p>
+      ) : (
+        <p style={{ color: "var(--text-muted)", fontSize: "var(--text-sm)", marginBottom: "var(--space-2)" }}>
+          🏰 No discount yet — your faction controls {territoryPct.toFixed(0)}% of zones
+          {nextTier
+            ? `, reach ${nextTier.territoryPct}% for ${nextTier.discountPct}% off tickets`
+            : ""}
+          {score && score.warChest === 0n && territoryPct >= (DISCOUNT_TIERS[0]?.territoryPct ?? 0)
+            ? " (your faction's war chest is also empty — deposit or capture more zones to fund it)"
+            : ""}
+          . Tiers: 25%→5% off · 50%→10% off · 75%→20% off, funded by the faction's war chest.
+        </p>
+      )}
 
       <p style={{ color: "var(--text-muted)", fontSize: "var(--text-sm)" }}>
         Normals — pick {NORMALS_REQUIRED} ({normals.length}/{NORMALS_REQUIRED})
-        {ownZones.size > 0 && " — greyed-out zones are already yours"}
       </p>
-      <NumberPicker
-        mode="toggle"
-        max={ballMax || 1}
-        selected={normals}
-        onToggle={toggleNormal}
-        limit={NORMALS_REQUIRED}
-        disabledNumbers={ownZones}
-        disabledTitle="Your faction already controls this zone"
-      />
+      <NumberPicker mode="toggle" max={ballMax || 1} selected={normals} onToggle={toggleNormal} limit={NORMALS_REQUIRED} />
 
       <p style={{ color: "var(--text-muted)", fontSize: "var(--text-sm)", marginTop: "var(--space-2)" }}>
         Bonusball {bonusball !== null ? `— ${bonusball}` : ""}

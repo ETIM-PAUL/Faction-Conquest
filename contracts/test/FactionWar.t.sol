@@ -188,7 +188,7 @@ contract FactionWarTest is Test {
         war.resolveDrawing(drawingId);
     }
 
-    function test_warChestFundedAndClaimable() public {
+    function test_warChestFunded() public {
         // 3 attacks on zone 1: RED x1, BLUE x2 -> BLUE captures zone 1.
         // 3 tickets * 1_000_000 ticketPrice * 10% mock referral fee = 300_000 accrued.
         vm.prank(redPlayer);
@@ -205,54 +205,134 @@ contract FactionWarTest is Test {
 
         vm.warp(block.timestamp + 1 days);
         vm.deal(redPlayer, 1 ether);
-        vm.prank(redPlayer);
+        vm.prank(redPlayer); // RED triggers -> RED is this drawing's Herald
         war.triggerBattle{value: 0.001 ether}();
 
         war.resolveDrawing(drawingId);
 
-        // BLUE is the sole territory holder after this resolution -> gets the whole accrued fee.
+        // Split weight: BLUE has territory=1 (captured zone 1), RED has heraldBonus=1
+        // (triggered settlement) -> equal weight (1 each) -> 300_000 splits 50/50.
         (,, uint256[] memory warChest) = war.getFactionScores();
-        assertEq(warChest[uint8(FactionWar.Faction.BLUE)], 300_000, "BLUE should get the full war chest");
-        assertEq(warChest[uint8(FactionWar.Faction.RED)], 0);
+        assertEq(warChest[uint8(FactionWar.Faction.BLUE)], 150_000, "BLUE's territory weight should earn half");
+        assertEq(warChest[uint8(FactionWar.Faction.RED)], 150_000, "RED's Herald weight should earn half");
         assertEq(usdc.balanceOf(address(war)), 300_000, "swept fee should sit in FactionWar's own USDC balance");
 
-        vm.expectRevert(FactionWar.NoFaction.selector);
-        vm.prank(redPlayer);
-        war.claimFactionTreasury(FactionWar.Faction.BLUE);
-
-        uint256 beforeBal = usdc.balanceOf(bluePlayer1);
-        vm.prank(bluePlayer1);
-        war.claimFactionTreasury(FactionWar.Faction.BLUE);
-        assertEq(usdc.balanceOf(bluePlayer1), beforeBal + 300_000, "claimer should receive the full chest");
-
-        (,, uint256[] memory warChestAfter) = war.getFactionScores();
-        assertEq(warChestAfter[uint8(FactionWar.Faction.BLUE)], 0, "chest should be zeroed after claim");
-
-        vm.expectRevert(FactionWar.EmptyWarChest.selector);
-        vm.prank(bluePlayer2);
-        war.claimFactionTreasury(FactionWar.Faction.BLUE);
+        // Chest is never withdrawn — there's no claim function anymore, it only
+        // subsidizes attack() discounts (see test_attack_appliesTerritoryDiscount).
     }
 
-    function test_warChest_notSweptWhenNoTerritoryYet() public {
+    function test_warChest_sweepsOnHeraldWeightEvenWithoutTerritory() public {
         vm.prank(redPlayer);
         war.attack(_normals(), 6); // zones 1-5
 
         uint256 drawingId = jackpot.currentDrawingId();
         uint8[] memory winningNormals = new uint8[](1);
-        winningNormals[0] = 10; // nobody attacked zone 10
+        winningNormals[0] = 10; // nobody attacked zone 10 -> nobody captures anything
         jackpot.setWinningNormals(drawingId, winningNormals, 6);
 
         vm.warp(block.timestamp + 1 days);
         vm.deal(redPlayer, 1 ether);
-        vm.prank(redPlayer);
+        vm.prank(redPlayer); // RED triggers -> RED is this drawing's Herald
         war.triggerBattle{value: 0.001 ether}();
 
         war.resolveDrawing(drawingId);
 
-        // Nobody captured anything -> total territory is still zero -> fee stays unswept.
+        // Nobody captured territory, but RED's Herald bonus gives it nonzero weight,
+        // so the fee still sweeps -> RED gets the full accrued fee via Herald weight alone.
         (,, uint256[] memory warChest) = war.getFactionScores();
-        assertEq(warChest[uint8(FactionWar.Faction.RED)], 0);
-        assertEq(usdc.balanceOf(address(war)), 0, "fee should remain accrued in Jackpot, not swept");
-        assertEq(jackpot.referralFees(address(war)), 100_000, "1 ticket's 10% fee still sitting unclaimed in Jackpot");
+        assertEq(warChest[uint8(FactionWar.Faction.RED)], 100_000, "RED's Herald weight should claim the full fee");
+        assertEq(usdc.balanceOf(address(war)), 100_000, "fee should be swept on Herald weight alone");
+        assertEq(jackpot.referralFees(address(war)), 0, "fee should no longer sit unclaimed in Jackpot");
     }
+
+    function test_depositToWarChest_revertsWithoutFaction() public {
+        usdc.mint(noFactionPlayer, TICKET_PRICE);
+        vm.prank(noFactionPlayer);
+        usdc.approve(address(war), TICKET_PRICE);
+
+        vm.expectRevert(FactionWar.NoFaction.selector);
+        vm.prank(noFactionPlayer);
+        war.depositToWarChest(TICKET_PRICE);
+    }
+
+    function test_depositToWarChest_revertsOnZeroAmount() public {
+        vm.expectRevert(FactionWar.ZeroAmount.selector);
+        vm.prank(redPlayer);
+        war.depositToWarChest(0);
+    }
+
+    function test_depositToWarChest_creditsCallersFaction() public {
+        uint256 depositAmount = 5_000_000;
+        usdc.mint(redPlayer, depositAmount);
+        vm.prank(redPlayer);
+        usdc.approve(address(war), depositAmount);
+
+        uint256 beforeBal = usdc.balanceOf(redPlayer);
+        vm.prank(redPlayer);
+        war.depositToWarChest(depositAmount);
+
+        assertEq(usdc.balanceOf(redPlayer), beforeBal - depositAmount, "USDC should be pulled from depositor");
+        (,, uint256[] memory warChest) = war.getFactionScores();
+        assertEq(warChest[uint8(FactionWar.Faction.RED)], depositAmount, "RED's chest should be credited");
+        assertEq(warChest[uint8(FactionWar.Faction.BLUE)], 0, "deposit should not spill into other factions");
+    }
+
+    function test_attack_appliesTerritoryDiscountCappedByChestBudget() public {
+        // Ball max is 30. Get BLUE to control 8 zones (>= 25% -> tier 1, 5% discount)
+        // by resolving 8 separate drawings each won uncontested by BLUE.
+        for (uint8 z = 1; z <= 8; z++) {
+            uint8[] memory zone = new uint8[](1);
+            zone[0] = z;
+            vm.prank(bluePlayer1);
+            war.attack(zone, 6);
+
+            uint256 drawingId = jackpot.currentDrawingId();
+            jackpot.setWinningNormals(drawingId, zone, 6);
+            vm.warp(block.timestamp + 1 days);
+            vm.deal(bluePlayer1, 1 ether);
+            vm.prank(bluePlayer1);
+            war.triggerBattle{value: 0.001 ether}();
+            war.resolveDrawing(drawingId);
+        }
+
+        (uint256[] memory territory,, uint256[] memory warChestBefore) = war.getFactionScores();
+        assertEq(territory[uint8(FactionWar.Faction.BLUE)], 8, "BLUE should control 8/30 zones (>=25%)");
+        uint256 chest = warChestBefore[uint8(FactionWar.Faction.BLUE)];
+        assertGt(chest, 0, "8 rounds of attacks should have funded BLUE's chest");
+
+        // Quote should reflect the 5% tier-1 discount, capped at 10% of the chest.
+        (uint256 ticketPrice, uint256 discountBps, uint256 discountAmount, uint256 finalPrice) =
+            war.getAttackQuote(bluePlayer1);
+        assertEq(ticketPrice, TICKET_PRICE);
+        assertEq(discountBps, 500, "8/30 = 26.6% territory should land in the 25% tier (5% off)");
+        uint256 expectedDiscount = (TICKET_PRICE * 500) / 10_000;
+        uint256 chestCap = (chest * 1_000) / 10_000;
+        assertEq(discountAmount, expectedDiscount < chestCap ? expectedDiscount : chestCap);
+        assertEq(finalPrice, ticketPrice - discountAmount);
+
+        uint256 before = usdc.balanceOf(bluePlayer1);
+        uint8[] memory freshZone = new uint8[](1);
+        freshZone[0] = 20;
+        vm.prank(bluePlayer1);
+        war.attack(freshZone, 6);
+
+        assertEq(usdc.balanceOf(bluePlayer1), before - finalPrice, "attacker should only pay ticketPrice - discount");
+
+        (,, uint256[] memory warChestAfter) = war.getFactionScores();
+        assertEq(
+            warChestAfter[uint8(FactionWar.Faction.BLUE)],
+            chest - discountAmount,
+            "chest should be debited by exactly the discount granted"
+        );
+    }
+
+    function test_getAttackQuote_noDiscountBelowTier() public {
+        (uint256 ticketPrice, uint256 discountBps, uint256 discountAmount, uint256 finalPrice) =
+            war.getAttackQuote(redPlayer);
+        assertEq(ticketPrice, TICKET_PRICE);
+        assertEq(discountBps, 0, "RED controls 0 zones, no tier reached");
+        assertEq(discountAmount, 0);
+        assertEq(finalPrice, TICKET_PRICE);
+    }
+
 }

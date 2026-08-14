@@ -17,9 +17,14 @@ import {IERC20} from "./interfaces/IERC20.sol";
 /// War chest: FactionWar is the referrer on every attack (self-referral — confirmed
 /// on-chain against Base Sepolia that Jackpot allows referrer == msg.sender). Real
 /// USDC referral fees accrue to this contract and get swept + split across factions
-/// proportional to territory on every resolveDrawing. Any player on a faction can
-/// claim their faction's whole pot — first to claim for your team takes it, which
-/// is a deliberate coordination/race mechanic, not an oversight.
+/// on every resolveDrawing, weighted by territory controlled *and* accumulated Herald
+/// bonuses (`_sweepAndFundWarChest`) — triggering settlement earns a real share of the
+/// chest, not just a leaderboard stat. Faction members can also top the chest up
+/// directly via `depositToWarChest`. The chest is never withdrawn — it self-subsidizes
+/// ticket price: the more zones a faction controls, the cheaper `attack()` gets for
+/// everyone on that faction (see `_quoteDiscount`). Each attack only draws a capped
+/// slice of the chest so one player can't burn through the whole pot and lock
+/// teammates out of the discount.
 contract FactionWar {
     enum Faction {
         NONE,
@@ -30,6 +35,25 @@ contract FactionWar {
 
     uint8 public constant FACTION_COUNT = 3;
     uint256 public constant FULL_REFERRAL_SPLIT = 1e18;
+    uint256 public constant BPS_DENOMINATOR = 10_000;
+
+    // Territory-share tiers (% of ballMax controlled, in bps) -> ticket discount (in bps).
+    uint256 public constant TIER1_TERRITORY_BPS = 2_500; // 25% of zones
+    uint256 public constant TIER2_TERRITORY_BPS = 5_000; // 50% of zones
+    uint256 public constant TIER3_TERRITORY_BPS = 7_500; // 75% of zones
+    uint256 public constant TIER1_DISCOUNT_BPS = 500; // 5% off
+    uint256 public constant TIER2_DISCOUNT_BPS = 1_000; // 10% off
+    uint256 public constant TIER3_DISCOUNT_BPS = 2_000; // 20% off
+
+    // Caps how much of the faction's chest a single attack can spend on its own
+    // discount, so the chest lasts across many attacks instead of one player
+    // draining it before teammates get a turn.
+    uint256 public constant MAX_CHEST_BPS_PER_ATTACK = 1_000; // 10% of current chest balance
+
+    // Each Herald bonus counts as this many zone-equivalents when splitting swept
+    // referral fees across factions — triggering settlement earns a share of the
+    // chest split, not just a leaderboard number.
+    uint256 public constant HERALD_WEIGHT = 1;
 
     struct ZoneState {
         mapping(uint8 => uint256) ticketsByFaction; // Faction => count, current open drawing
@@ -58,7 +82,15 @@ contract FactionWar {
     event BattleTriggered(uint256 indexed drawingId, Faction indexed faction, address caller);
     event ZonesResolved(uint256 indexed drawingId, uint8[] capturedZones, Faction[] winningFactions);
     event WarChestFunded(uint256 indexed drawingId, uint256 totalSwept, uint256[] shares);
-    event WarChestClaimed(Faction indexed faction, address indexed claimer, uint256 amount);
+    event WarChestDeposited(Faction indexed faction, address indexed depositor, uint256 amount);
+    event TicketDiscounted(
+        uint256 indexed drawingId,
+        Faction indexed faction,
+        address indexed player,
+        uint256 discountBps,
+        uint256 discountAmount,
+        uint256 pricePaid
+    );
 
     error InvalidFaction();
     error NoFaction();
@@ -69,7 +101,7 @@ contract FactionWar {
     error RefundFailed();
     error UsdcTransferFailed();
     error UsdcApproveFailed();
-    error EmptyWarChest();
+    error ZeroAmount();
 
     constructor(address _jackpot, address _usdc) {
         jackpot = IJackpot(_jackpot);
@@ -98,6 +130,8 @@ contract FactionWar {
     }
 
     /// @notice Buy one real Megapot ticket on the caller's behalf, tagged to their faction.
+    /// Price is discounted based on the faction's territory share, subsidized from that
+    /// faction's own war chest (see `_quoteDiscount`) — the caller still pays the rest.
     function attack(uint8[] calldata normals, uint8 bonusball) external {
         Faction faction = playerFaction[msg.sender];
         if (faction == Faction.NONE) revert NoFaction();
@@ -105,7 +139,15 @@ contract FactionWar {
         uint256 drawingId = jackpot.currentDrawingId();
         IJackpot.DrawingState memory state = jackpot.getDrawingState(drawingId);
 
-        if (!usdc.transferFrom(msg.sender, address(this), state.ticketPrice)) revert UsdcTransferFailed();
+        (uint256 discountBps, uint256 discountAmount) = _quoteDiscount(faction, state.ticketPrice, state.ballMax);
+        uint256 pricePaid = state.ticketPrice - discountAmount;
+
+        if (pricePaid > 0) {
+            if (!usdc.transferFrom(msg.sender, address(this), pricePaid)) revert UsdcTransferFailed();
+        }
+        if (discountAmount > 0) {
+            factionWarChest[faction] -= discountAmount;
+        }
         if (!usdc.approve(address(jackpot), state.ticketPrice)) revert UsdcApproveFailed();
 
         IJackpot.Ticket[] memory tickets = new IJackpot.Ticket[](1);
@@ -127,6 +169,41 @@ contract FactionWar {
         }
 
         emit ZoneAttacked(drawingId, faction, normals, bonusball, msg.sender);
+        if (discountAmount > 0) {
+            emit TicketDiscounted(drawingId, faction, msg.sender, discountBps, discountAmount, pricePaid);
+        }
+    }
+
+    /// @notice Preview what `attack()` would cost `player` right now — for the frontend to
+    /// show the discount before they commit to a transaction.
+    function getAttackQuote(address player)
+        external
+        view
+        returns (uint256 ticketPrice, uint256 discountBps, uint256 discountAmount, uint256 finalPrice)
+    {
+        IJackpot.DrawingState memory state = jackpot.getDrawingState(jackpot.currentDrawingId());
+        ticketPrice = state.ticketPrice;
+
+        Faction faction = playerFaction[player];
+        if (faction != Faction.NONE) {
+            (discountBps, discountAmount) = _quoteDiscount(faction, ticketPrice, state.ballMax);
+        }
+        finalPrice = ticketPrice - discountAmount;
+    }
+
+    /// @notice Top up the caller's own faction's war chest directly, no territory or
+    /// referral fees required. Restricted to faction members — you can only fund your
+    /// own team. Deposited USDC funds the same territory-tier attack() discount as
+    /// swept referral fees; it's never withdrawn.
+    function depositToWarChest(uint256 amount) external {
+        Faction faction = playerFaction[msg.sender];
+        if (faction == Faction.NONE) revert NoFaction();
+        if (amount == 0) revert ZeroAmount();
+
+        if (!usdc.transferFrom(msg.sender, address(this), amount)) revert UsdcTransferFailed();
+        factionWarChest[faction] += amount;
+
+        emit WarChestDeposited(faction, msg.sender, amount);
     }
 
     /// @notice Race to trigger nightly settlement; caller's faction becomes the Herald for this drawing.
@@ -207,35 +284,64 @@ contract FactionWar {
         _sweepAndFundWarChest(drawingId);
     }
 
-    /// @notice Claims this faction's entire war chest for msg.sender. Requires msg.sender
-    /// be on that faction. Whole-pot, first-claimer-takes-it — a deliberate race, not a bug.
-    function claimFactionTreasury(Faction f) external {
-        if (playerFaction[msg.sender] != f) revert NoFaction();
-        uint256 amount = factionWarChest[f];
-        if (amount == 0) revert EmptyWarChest();
+    /// @dev Territory-share -> discount-bps tiers. 0 territory or 0 ballMax -> no discount.
+    function _discountBps(Faction faction, uint8 ballMax) internal view returns (uint256) {
+        if (ballMax == 0) return 0;
+        uint256 territoryBps = (territoryCount[faction] * BPS_DENOMINATOR) / ballMax;
+        if (territoryBps >= TIER3_TERRITORY_BPS) return TIER3_DISCOUNT_BPS;
+        if (territoryBps >= TIER2_TERRITORY_BPS) return TIER2_DISCOUNT_BPS;
+        if (territoryBps >= TIER1_TERRITORY_BPS) return TIER1_DISCOUNT_BPS;
+        return 0;
+    }
 
-        factionWarChest[f] = 0;
-        if (!usdc.transfer(msg.sender, amount)) revert UsdcTransferFailed();
+    /// @dev Discount amount is capped both by the tier's own bps of ticket price and by
+    /// `MAX_CHEST_BPS_PER_ATTACK` of the faction's current chest balance — so a single
+    /// attack can never take more than a fraction of the chest, leaving the rest for
+    /// teammates' attacks.
+    function _quoteDiscount(Faction faction, uint256 ticketPrice, uint8 ballMax)
+        internal
+        view
+        returns (uint256 discountBps, uint256 discountAmount)
+    {
+        discountBps = _discountBps(faction, ballMax);
+        if (discountBps == 0) return (0, 0);
 
-        emit WarChestClaimed(f, msg.sender, amount);
+        uint256 chest = factionWarChest[faction];
+        if (chest == 0) return (discountBps, 0);
+
+        uint256 rawDiscount = (ticketPrice * discountBps) / BPS_DENOMINATOR;
+        uint256 maxFromChest = (chest * MAX_CHEST_BPS_PER_ATTACK) / BPS_DENOMINATOR;
+
+        discountAmount = rawDiscount;
+        if (discountAmount > maxFromChest) discountAmount = maxFromChest;
+        if (discountAmount > chest) discountAmount = chest;
     }
 
     /// @dev Sweeps any USDC referral fees accrued to this contract and splits them
-    /// across factions proportional to total territory controlled *after* this
-    /// round's captures. If nobody controls any territory yet, the fees stay
-    /// accrued in Jackpot (not swept) until a future round when they can be split.
+    /// across factions proportional to a weight combining territory controlled
+    /// *after* this round's captures and accumulated Herald bonuses (each Herald
+    /// bonus counts as `HERALD_WEIGHT` zone-equivalents) — triggering settlement
+    /// earns a faction a share of the chest even before it holds any territory.
+    /// If every faction's weight is zero, the fees stay accrued in Jackpot (not
+    /// swept) until a future round when they can be split.
     function _sweepAndFundWarChest(uint256 drawingId) internal {
         uint256 accrued = jackpot.referralFees(address(this));
         if (accrued == 0) return;
 
-        uint256 totalTerritory = territoryCount[Faction.RED] + territoryCount[Faction.BLUE] + territoryCount[Faction.GREEN];
-        if (totalTerritory == 0) return;
+        uint256[] memory weights = new uint256[](FACTION_COUNT + 1);
+        uint256 totalWeight;
+        for (uint8 f = 1; f <= FACTION_COUNT; f++) {
+            uint256 weight = territoryCount[Faction(f)] + heraldBonus[Faction(f)] * HERALD_WEIGHT;
+            weights[f] = weight;
+            totalWeight += weight;
+        }
+        if (totalWeight == 0) return;
 
         jackpot.claimReferralFees();
 
         uint256[] memory shares = new uint256[](FACTION_COUNT + 1);
         for (uint8 f = 1; f <= FACTION_COUNT; f++) {
-            uint256 share = (accrued * territoryCount[Faction(f)]) / totalTerritory;
+            uint256 share = (accrued * weights[f]) / totalWeight;
             factionWarChest[Faction(f)] += share;
             shares[f] = share;
         }
@@ -286,8 +392,9 @@ contract FactionWar {
         }
     }
 
-    /// @notice Leaderboard data: territory count, Herald bonuses, and claimable war
-    /// chest (USDC, 6 decimals), all indexed by Faction enum value.
+    /// @notice Leaderboard data: territory count, Herald bonuses, and war chest balance
+    /// (USDC, 6 decimals) — the chest subsidizes attack() discounts, it is never
+    /// withdrawn — all indexed by Faction enum value.
     function getFactionScores()
         external
         view
