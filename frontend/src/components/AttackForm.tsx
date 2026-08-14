@@ -144,12 +144,12 @@ export function AttackForm() {
         {hasDiscount ? (
           <span>
             <span style={{ color: "var(--text-muted)", textDecoration: "line-through", marginRight: "var(--space-1)" }}>
-              {(Number(ticketPrice) / 1e6).toFixed(2)}
+              {(Number(ticketPrice) / 1e6).toFixed(4)}
             </span>
-            <span className="text-critical">{(Number(payablePrice) / 1e6).toFixed(2)} USDC</span>
+            <span className="text-critical">{(Number(payablePrice) / 1e6).toFixed(4)} USDC</span>
           </span>
         ) : (
-          <span className="text-critical">{(Number(ticketPrice) / 1e6).toFixed(2)} USDC</span>
+          <span className="text-critical">{(Number(ticketPrice) / 1e6).toFixed(4)} USDC</span>
         )}
       </div>
       {!hasFaction ? (

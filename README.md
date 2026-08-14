@@ -5,6 +5,9 @@ Megapot tickets, and let the real nightly drawing decide who controls the map â€
 lottery, no off-chain simulation, no separate "game currency."
 
 Built for the **Best Game Powered by Megapot** track.
+
+**ðŸŽ® Live: https://faction-conquest.vercel.app**
+
 ---
 
 ## The pitch

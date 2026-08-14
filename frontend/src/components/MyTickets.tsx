@@ -122,7 +122,7 @@ function TicketRow({ ticket, alreadyClaimed }: { ticket: PlayerTicket; alreadyCl
               ? "Checking payout…"
               : worthClaiming
                 ? `Estimated payout: ${(Number(expectedPayout) / 1e6).toFixed(4)} USDC`
-                : "No payout on this ticket — claiming would only cost gas"}
+                : "No payout on this ticket"}
           </p>
         )}
         {resultText && <p style={{ color: "var(--accent)", fontSize: "var(--text-sm)", marginBottom: 0 }}>{resultText}</p>}

@@ -7,13 +7,17 @@ const enabled = Boolean(FACTION_WAR_ADDRESS);
 
 export function usePlayerFaction() {
   const { address } = useAccount();
-  return useReadContract({
+  // ABI types playerFaction's output as plain `uint8` (abitype doesn't narrow via
+  // internalType's enum name), so wagmi infers `number` here — cast to the actual
+  // `Faction` union so callers get real narrowing on `=== Faction.NONE` checks.
+  const result = useReadContract({
     address: FACTION_WAR_ADDRESS,
     abi: FACTION_WAR_ABI,
     functionName: "playerFaction",
     args: address ? [address] : undefined,
     query: { enabled: enabled && Boolean(address), refetchInterval: 5_000 },
   });
+  return { ...result, data: result.data as Faction | undefined };
 }
 
 /// Full map (Build.md `getMapState`) — one poll drives both the flat grid
