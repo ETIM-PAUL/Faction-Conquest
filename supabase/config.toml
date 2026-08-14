@@ -1,0 +1,12 @@
+# Supabase CLI project config. Link with `supabase link` before `supabase db
+# push` / `supabase functions deploy`.
+
+[functions.faction-auth-nonce]
+# Called before the wallet has any Supabase session, so the platform's own
+# JWT check must be off — the function does its own address-format check.
+verify_jwt = false
+
+[functions.faction-auth-verify]
+# Requires a valid (anonymous) Supabase session — this is the endpoint that
+# attaches faction data to it, not the endpoint that creates it.
+verify_jwt = true
