@@ -177,27 +177,12 @@ export function AttackForm() {
       <p style={{ color: "var(--text-muted)", fontSize: "var(--text-sm)" }}>
         Normals — pick {NORMALS_REQUIRED} ({normals.length}/{NORMALS_REQUIRED})
       </p>
-      <NumberPicker
-        mode="toggle"
-        max={ballMax || 1}
-        selected={normals}
-        onToggle={toggleNormal}
-        limit={NORMALS_REQUIRED}
-        disabledNumbers={bonusball !== null ? new Set([bonusball]) : undefined}
-        disabledTitle="Already picked as your bonusball"
-      />
+      <NumberPicker mode="toggle" max={ballMax || 1} selected={normals} onToggle={toggleNormal} limit={NORMALS_REQUIRED} />
 
       <p style={{ color: "var(--text-muted)", fontSize: "var(--text-sm)", marginTop: "var(--space-2)" }}>
         Bonusball {bonusball !== null ? `— ${bonusball}` : ""}
       </p>
-      <NumberPicker
-        mode="radio"
-        max={bonusballMax || 1}
-        selected={bonusball}
-        onSelect={selectBonusball}
-        disabledNumbers={new Set(normals)}
-        disabledTitle="Already picked as a normal"
-      />
+      <NumberPicker mode="radio" max={bonusballMax || 1} selected={bonusball} onSelect={selectBonusball} />
 
       <div style={{ marginTop: "var(--space-2)" }}>
         {!isConnected ? (
