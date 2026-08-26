@@ -56,7 +56,6 @@ contract FactionWar {
     uint256 public constant HERALD_WEIGHT = 1;
 
     struct ZoneState {
-        mapping(uint8 => uint256) ticketsByFaction; // Faction => count, current open drawing
         Faction controller;
         uint256 lastCapturedDrawing;
     }
@@ -72,6 +71,11 @@ contract FactionWar {
     mapping(Faction => uint256) public heraldBonus;
     mapping(Faction => uint256) public factionWarChest; // claimable USDC, funded by referral fees
     mapping(Faction => uint256) public factionPlayerCount; // headcount, for balanced auto-assignment
+    // zoneNum => drawingId => Faction => ticket count. Scoped per drawing so tickets
+    // bought after a drawing's numbers are drawn (i.e. after jackpot.currentDrawingId()
+    // has already advanced to the next round) can never be tallied into that concluded
+    // drawing's resolution — only attacks placed before the draw concluded count.
+    mapping(uint8 => mapping(uint256 => mapping(uint8 => uint256))) private ticketsByZoneDrawing;
 
     uint256 public lastResolvedDrawing;
 
@@ -165,7 +169,7 @@ contract FactionWar {
         jackpot.buyTickets(tickets, msg.sender, referrers, splits, bytes32("FACTIONWAR"));
 
         for (uint256 i = 0; i < normals.length; i++) {
-            zones[normals[i]].ticketsByFaction[uint8(faction)] += 1;
+            ticketsByZoneDrawing[normals[i]][drawingId][uint8(faction)] += 1;
         }
 
         emit ZoneAttacked(drawingId, faction, normals, bonusball, msg.sender);
@@ -244,16 +248,17 @@ contract FactionWar {
             ZoneState storage zone = zones[zoneNum];
 
             Faction winner = Faction.RED;
-            uint256 highest = zone.ticketsByFaction[uint8(Faction.RED)];
+            uint256 highest = ticketsByZoneDrawing[zoneNum][drawingId][uint8(Faction.RED)];
             for (uint8 f = 2; f <= FACTION_COUNT; f++) {
-                uint256 count = zone.ticketsByFaction[f];
+                uint256 count = ticketsByZoneDrawing[zoneNum][drawingId][f];
                 if (count > highest) {
                     highest = count;
                     winner = Faction(f);
                 }
             }
 
-            // A drawn zone nobody attacked stays as-is (no attacker to award it to).
+            // A drawn zone nobody attacked (before the draw concluded) stays as-is
+            // (no attacker to award it to).
             if (highest > 0) {
                 if (zone.controller != winner) {
                     if (zone.controller != Faction.NONE) territoryCount[zone.controller] -= 1;
@@ -264,7 +269,7 @@ contract FactionWar {
             }
 
             for (uint8 f = 1; f <= FACTION_COUNT; f++) {
-                zone.ticketsByFaction[f] = 0;
+                delete ticketsByZoneDrawing[zoneNum][drawingId][f];
             }
 
             captured[i] = zoneNum;
@@ -353,17 +358,19 @@ contract FactionWar {
     // Views
     // ---------------------------------------------------------------------
 
-    /// @notice Single zone's controller + live (unresolved) per-faction ticket counts.
-    /// `liveCounts` is indexed by Faction enum value (0=NONE unused, 1=RED, 2=BLUE, 3=GREEN).
+    /// @notice Single zone's controller + live (unresolved) per-faction ticket counts
+    /// for the currently open drawing. `liveCounts` is indexed by Faction enum value
+    /// (0=NONE unused, 1=RED, 2=BLUE, 3=GREEN).
     function getZone(uint8 number)
         external
         view
         returns (Faction controller, uint256 lastCapturedDrawing, uint256[] memory liveCounts)
     {
         ZoneState storage zone = zones[number];
+        uint256 drawingId = jackpot.currentDrawingId();
         liveCounts = new uint256[](FACTION_COUNT + 1);
         for (uint8 f = 1; f <= FACTION_COUNT; f++) {
-            liveCounts[f] = zone.ticketsByFaction[f];
+            liveCounts[f] = ticketsByZoneDrawing[number][drawingId][f];
         }
         return (zone.controller, zone.lastCapturedDrawing, liveCounts);
     }
@@ -374,7 +381,8 @@ contract FactionWar {
         view
         returns (uint8 ballMax, Faction[] memory controllers, uint256[][] memory liveCounts)
     {
-        IJackpot.DrawingState memory state = jackpot.getDrawingState(jackpot.currentDrawingId());
+        uint256 drawingId = jackpot.currentDrawingId();
+        IJackpot.DrawingState memory state = jackpot.getDrawingState(drawingId);
         ballMax = state.ballMax;
 
         controllers = new Faction[](ballMax);
@@ -386,7 +394,7 @@ contract FactionWar {
 
             uint256[] memory counts = new uint256[](FACTION_COUNT + 1);
             for (uint8 f = 1; f <= FACTION_COUNT; f++) {
-                counts[f] = zone.ticketsByFaction[f];
+                counts[f] = ticketsByZoneDrawing[i][drawingId][f];
             }
             liveCounts[i - 1] = counts;
         }

@@ -103,7 +103,14 @@ function TicketRow({ ticket, alreadyClaimed }: { ticket: PlayerTicket; alreadyCl
   return (
     <li
       className="panel"
-      style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "var(--space-1)" }}
+      style={{
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        flexWrap: "wrap",
+        gap: "var(--space-1)",
+        marginBottom: "var(--space-1)",
+      }}
     >
       <div>
         <p style={{ marginBottom: 2 }}>

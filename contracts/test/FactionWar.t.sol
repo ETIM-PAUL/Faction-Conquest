@@ -165,6 +165,48 @@ contract FactionWarTest is Test {
         assertEq(zone1CountsAfter[uint8(FactionWar.Faction.BLUE)], 0);
     }
 
+    function test_resolveDrawing_ignoresTicketsBoughtAfterDrawConcluded() public {
+        // RED attacks zone 1 before the draw concludes.
+        vm.prank(redPlayer);
+        war.attack(_normals(), 6);
+
+        uint256 drawingId = jackpot.currentDrawingId();
+        uint8[] memory winningNormals = new uint8[](1);
+        winningNormals[0] = 1;
+        jackpot.setWinningNormals(drawingId, winningNormals, 6);
+
+        vm.warp(block.timestamp + 1 days);
+        vm.deal(redPlayer, 1 ether);
+        vm.prank(redPlayer);
+        war.triggerBattle{value: 0.001 ether}(); // draw concludes here; jackpot rolls to the next drawing
+
+        // BLUE attacks the same zone *after* the draw concluded but *before*
+        // resolveDrawing is called for it — these tickets belong to the next,
+        // still-open drawing and must not count toward the concluded one.
+        vm.prank(bluePlayer1);
+        war.attack(_normals(), 6);
+        vm.prank(bluePlayer2);
+        war.attack(_normals(), 6);
+
+        war.resolveDrawing(drawingId);
+
+        (FactionWar.Faction zone1Controller,,) = war.getZone(1);
+        assertEq(
+            uint8(zone1Controller),
+            uint8(FactionWar.Faction.RED),
+            "zone 1 should go to RED - BLUE's tickets were bought after the draw concluded"
+        );
+
+        (uint256[] memory territory,,) = war.getFactionScores();
+        assertEq(territory[uint8(FactionWar.Faction.RED)], 1);
+        assertEq(territory[uint8(FactionWar.Faction.BLUE)], 0);
+
+        // BLUE's tickets still landed - just tallied against the new, currently open drawing.
+        (,, uint256[] memory liveCounts) = war.getZone(1);
+        assertEq(liveCounts[uint8(FactionWar.Faction.BLUE)], 2);
+        assertEq(liveCounts[uint8(FactionWar.Faction.RED)], 0);
+    }
+
     function test_resolveDrawing_revertsIfNotSettled() public {
         uint256 drawingId = jackpot.currentDrawingId();
         vm.expectRevert(FactionWar.DrawingNotSettled.selector);
