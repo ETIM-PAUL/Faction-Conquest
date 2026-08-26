@@ -72,7 +72,7 @@ function DepositForm() {
   }
 
   return (
-    <div style={{ display: "flex", gap: "var(--space-1)", alignItems: "center", marginTop: "var(--space-2)" }}>
+    <div style={{ display: "flex", gap: "var(--space-1)", alignItems: "center", flexWrap: "wrap", marginTop: "var(--space-2)" }}>
       <span className="hud-text" style={{ color: FACTION_COLOR[playerFaction] }} aria-hidden="true">
         {FACTION_GLYPH[playerFaction]}
       </span>
@@ -105,34 +105,36 @@ export function Leaderboard() {
   return (
     <section className="panel">
       <h2>Leaderboard</h2>
-      <table>
-        <thead>
-          <tr>
-            <th>Faction</th>
-            <th>Zones controlled</th>
-            <th>Herald bonuses</th>
-            <th>War chest (USDC)</th>
-          </tr>
-        </thead>
-        <tbody>
-          {FACTIONS.map((f) => {
-            const score = factionScoreFor(territory, herald, warChest, f);
-            return (
-              <tr key={f}>
-                <td>
-                  <span className="hud-text" style={{ color: FACTION_COLOR[f] }} aria-hidden="true">
-                    {FACTION_GLYPH[f]}
-                  </span>{" "}
-                  {FACTION_LABEL[f]}
-                </td>
-                <td>{score.territory.toString()}</td>
-                <td>{score.herald.toString()}</td>
-                <td className={score.warChest > 0n ? "text-critical" : undefined}>{formatUsdc(score.warChest)}</td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+      <div className="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Faction</th>
+              <th>Zones controlled</th>
+              <th>Herald bonuses</th>
+              <th>War chest (USDC)</th>
+            </tr>
+          </thead>
+          <tbody>
+            {FACTIONS.map((f) => {
+              const score = factionScoreFor(territory, herald, warChest, f);
+              return (
+                <tr key={f}>
+                  <td>
+                    <span className="hud-text" style={{ color: FACTION_COLOR[f] }} aria-hidden="true">
+                      {FACTION_GLYPH[f]}
+                    </span>{" "}
+                    {FACTION_LABEL[f]}
+                  </td>
+                  <td>{score.territory.toString()}</td>
+                  <td>{score.herald.toString()}</td>
+                  <td className={score.warChest > 0n ? "text-critical" : undefined}>{formatUsdc(score.warChest)}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
       <p style={{ color: "var(--text-muted)", fontSize: "var(--text-sm)", marginTop: "var(--space-1)" }}>
         War chests are funded by real referral fees on every attack, split by territory and Herald bonuses
         on each resolved drawing. The chest is never withdrawn — the more territory and Herald bonuses your

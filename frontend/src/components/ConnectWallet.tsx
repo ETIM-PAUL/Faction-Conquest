@@ -21,7 +21,7 @@ export function ConnectWallet() {
 
   if (wrongNetwork) {
     return (
-      <div style={{ display: "flex", alignItems: "center", gap: "var(--space-1)" }}>
+      <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: "var(--space-1)" }}>
         <span style={{ color: "var(--accent)" }}>Wrong network</span>
         <button onClick={() => switchChain({ chainId: baseSepolia.id })} disabled={isSwitching}>
           {isSwitching ? "Switching…" : "Switch to Base Sepolia"}

@@ -32,7 +32,7 @@ export function MapGrid() {
       <h2>Map ({ballMax} zones)</h2>
 
       <div className="map-table">
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(10, 1fr)", gap: "6px" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(44px, 1fr))", gap: "6px" }}>
           {controllers.map((controller, i) => {
             const zoneNumber = i + 1;
             const counts = liveCounts[i];

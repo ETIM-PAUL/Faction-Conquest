@@ -96,7 +96,7 @@ export function TriggerBattle() {
   return (
     <section className="panel">
       <h2>Trigger battle</h2>
-      <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)" }}>
+      <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: "var(--space-2)" }}>
         <CooldownRing progress={progress} ready={eligible} label={eligible ? "READY" : `${secondsRemaining}s`} />
         <div>
           {!eligible ? (

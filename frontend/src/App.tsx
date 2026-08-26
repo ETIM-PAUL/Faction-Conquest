@@ -18,7 +18,7 @@ function App() {
   return (
     <div style={{ minHeight: "100vh" }}>
       <header
-        className="panel"
+        className="panel app-header"
         style={{
           display: "flex",
           justifyContent: "space-between",
@@ -35,7 +35,7 @@ function App() {
         <ConnectWallet />
       </header>
 
-      <div style={{ padding: "var(--space-3)" }}>
+      <div className="app-body">
         {!FACTION_WAR_ADDRESS && (
           <p style={{ color: "var(--accent)" }}>
             VITE_FACTION_WAR_ADDRESS is unset — deploy FactionWar (contracts/script/Deploy.s.sol) and set it in
@@ -45,8 +45,8 @@ function App() {
 
 
         {FACTION_WAR_ADDRESS && (
-          <div style={{ display: "flex", gap: "var(--space-3)", flexWrap: "wrap", alignItems: "flex-start" }}>
-            <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-2)", flex: "1 1 320px", minWidth: 320 }}>
+          <div className="app-columns">
+            <div className="app-col app-col--side">
               <FactionSelect />
               <AttackForm />
               <TriggerBattle />
@@ -54,7 +54,7 @@ function App() {
               <MyTickets />
             </div>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-2)", flex: "2 1 480px", minWidth: 320 }}>
+            <div className="app-col app-col--main">
               <div style={{ display: "flex", justifyContent: "flex-end" }}>
                 <button onClick={() => setShow3D((v) => !v)}>
                   {show3D ? "Show flat grid" : "Show 3D map"}
@@ -62,7 +62,7 @@ function App() {
               </div>
 
               {show3D ? (
-                <div className="panel" style={{ height: 420, padding: 0, overflow: "hidden" }}>
+                <div className="panel map-3d-panel" style={{ padding: 0, overflow: "hidden" }}>
                   <MapScene />
                 </div>
               ) : (

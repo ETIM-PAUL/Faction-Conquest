@@ -146,6 +146,65 @@ input {
   z-index: 2;
 }
 
+/* ---- Responsive app shell ---- */
+.app-header {
+  flex-wrap: wrap;
+  row-gap: var(--space-1);
+}
+
+.app-body {
+  padding: var(--space-3);
+}
+
+.app-columns {
+  display: flex;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+
+.app-col {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 320px;
+}
+
+.app-col--side {
+  flex: 1 1 320px;
+}
+
+.app-col--main {
+  flex: 2 1 480px;
+}
+
+.map-3d-panel {
+  height: 420px;
+}
+
+/* Lets a wide table scroll on its own instead of forcing the whole page to
+   scroll horizontally or squeezing columns unreadably thin. */
+.table-scroll {
+  overflow-x: auto;
+}
+
+@media (max-width: 400px) {
+  .app-body {
+    padding: var(--space-2);
+  }
+
+  /* Below the width where two 320px columns can coexist even stacked, drop
+     the minimum so a single column can shrink to the actual viewport. */
+  .app-col {
+    min-width: 0;
+    flex-basis: 100%;
+  }
+
+  .map-3d-panel {
+    height: 260px;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.001ms !important;
