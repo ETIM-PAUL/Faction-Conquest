@@ -1,3 +1,5 @@
 Build.md
 BUILD_PLAN.md
 llms.md
+.vercel
+.env*

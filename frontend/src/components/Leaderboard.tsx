@@ -136,9 +136,8 @@ export function Leaderboard() {
         </table>
       </div>
       <p style={{ color: "var(--text-muted)", fontSize: "var(--text-sm)", marginTop: "var(--space-1)" }}>
-        War chests are funded by real referral fees on every attack, split by territory and Herald bonuses
-        on each resolved drawing. The chest is never withdrawn — the more territory and Herald bonuses your
-        faction holds, the cheaper attacks get for everyone on your team.
+        Funded by referral fees (split by territory + Herald bonuses) or direct deposits from faction
+        members — never withdrawn, just makes your team's attacks cheaper.
       </p>
       <DepositForm />
     </section>

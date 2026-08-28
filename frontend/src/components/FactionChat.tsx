@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { Filter } from "bad-words";
 import { useAccount, useReadContract } from "wagmi";
 import { FACTION_WAR_ABI } from "../contracts/FactionWar.abi";
 import { FACTION_WAR_ADDRESS } from "../contracts/addresses";
@@ -21,6 +22,13 @@ type ChatMessage = {
 function shortAddress(address: string) {
   return `${address.slice(0, 6)}…${address.slice(-4)}`;
 }
+
+// Client-side check only — a quick, friendly rejection before a round trip.
+// The real gate is the chat_messages BEFORE INSERT trigger in
+// supabase/migrations/, which the client can't bypass (same "this
+// component's own checks are just for a clear message, not the actual gate"
+// pattern as the faction/ticket checks below).
+const profanityFilter = new Filter();
 
 /// Off-chain faction taunt board — see supabase/. Gated in two layers: the
 /// on-chain playerFaction (do you even belong to a faction), on-chain
@@ -91,6 +99,11 @@ export function FactionChat() {
     const body = draft.trim();
     if (!client || !faction || !address || !body) return;
 
+    if (profanityFilter.isProfane(body)) {
+      setSendError("Keep it clean — message contains language that isn't allowed here.");
+      return;
+    }
+
     setSending(true);
     setSendError(null);
     try {
@@ -100,7 +113,14 @@ export function FactionChat() {
       if (insertError) throw insertError;
       setDraft("");
     } catch (err) {
-      setSendError(err instanceof Error ? err.message : "Message failed to send");
+      const message = err instanceof Error ? err.message : "";
+      if (message.includes("profanity_detected")) {
+        setSendError("Keep it clean — message contains language that isn't allowed here.");
+      } else if (message.includes("rate_limited")) {
+        setSendError("Slow down — one message every few seconds.");
+      } else {
+        setSendError(message || "Message failed to send");
+      }
     } finally {
       setSending(false);
     }
