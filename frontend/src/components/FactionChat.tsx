@@ -113,7 +113,7 @@ export function FactionChat() {
       <h2>Faction chat</h2>
 
       {(onChainFaction === undefined || onChainFaction === 0) && (
-        <p style={{ color: "var(--text-muted)" }}>Join a faction to unlock its chat.</p>
+        <p style={{ color: "var(--text-muted)" }}>Join a faction and purchase a ticket to unlock its chat.</p>
       )}
 
       {onChainFaction !== undefined && onChainFaction !== 0 && !hasBoughtTicket && (

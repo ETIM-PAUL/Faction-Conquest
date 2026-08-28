@@ -58,12 +58,12 @@ Deno.serve(async (req) => {
   if (preflight) return preflight;
 
   if (req.method !== "POST") {
-    return jsonResponse({ error: "method_not_allowed" }, 405);
+    return jsonResponse(req, { error: "method_not_allowed" }, 405);
   }
 
   const authHeader = req.headers.get("Authorization");
   if (!authHeader) {
-    return jsonResponse({ error: "missing_session" }, 401);
+    return jsonResponse(req, { error: "missing_session" }, 401);
   }
 
   const callerClient = createClient(supabaseUrl, anonKey, {
@@ -73,7 +73,7 @@ Deno.serve(async (req) => {
     data: { user },
   } = await callerClient.auth.getUser();
   if (!user) {
-    return jsonResponse({ error: "missing_session" }, 401);
+    return jsonResponse(req, { error: "missing_session" }, 401);
   }
 
   let address: string;
@@ -81,14 +81,14 @@ Deno.serve(async (req) => {
   try {
     ({ address, signature } = await req.json());
   } catch {
-    return jsonResponse({ error: "invalid_json" }, 400);
+    return jsonResponse(req, { error: "invalid_json" }, 400);
   }
 
   if (typeof address !== "string" || !ADDRESS_RE.test(address)) {
-    return jsonResponse({ error: "invalid_address" }, 400);
+    return jsonResponse(req, { error: "invalid_address" }, 400);
   }
   if (typeof signature !== "string" || !signature.startsWith("0x")) {
-    return jsonResponse({ error: "invalid_signature" }, 400);
+    return jsonResponse(req, { error: "invalid_signature" }, 400);
   }
   address = address.toLowerCase();
 
@@ -100,10 +100,10 @@ Deno.serve(async (req) => {
 
   if (nonceError) {
     console.error("nonce lookup failed", nonceError);
-    return jsonResponse({ error: "internal_error" }, 500);
+    return jsonResponse(req, { error: "internal_error" }, 500);
   }
   if (!nonceRow || new Date(nonceRow.expires_at).getTime() < Date.now()) {
-    return jsonResponse({ error: "nonce_expired_or_missing" }, 401);
+    return jsonResponse(req, { error: "nonce_expired_or_missing" }, 401);
   }
 
   // Single-use: delete immediately so a captured signature can't be replayed.
@@ -117,7 +117,7 @@ Deno.serve(async (req) => {
   });
 
   if (!validSignature) {
-    return jsonResponse({ error: "signature_verification_failed" }, 401);
+    return jsonResponse(req, { error: "signature_verification_failed" }, 401);
   }
 
   const faction = await publicClient.readContract({
@@ -128,7 +128,7 @@ Deno.serve(async (req) => {
   });
 
   if (faction === 0) {
-    return jsonResponse({ error: "no_faction" }, 403);
+    return jsonResponse(req, { error: "no_faction" }, 403);
   }
 
   // Chat access is gated on a one-time real ticket purchase, not per-drawing —
@@ -142,7 +142,7 @@ Deno.serve(async (req) => {
   });
 
   if (ticketsBought === 0n) {
-    return jsonResponse({ error: "no_ticket" }, 403);
+    return jsonResponse(req, { error: "no_ticket" }, 403);
   }
 
   const { error: updateError } = await adminClient.auth.admin.updateUserById(user.id, {
@@ -150,8 +150,8 @@ Deno.serve(async (req) => {
   });
   if (updateError) {
     console.error("app_metadata update failed", updateError);
-    return jsonResponse({ error: "internal_error" }, 500);
+    return jsonResponse(req, { error: "internal_error" }, 500);
   }
 
-  return jsonResponse({ faction });
+  return jsonResponse(req, { faction });
 });

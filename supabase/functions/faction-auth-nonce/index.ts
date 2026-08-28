@@ -18,18 +18,18 @@ Deno.serve(async (req) => {
   if (preflight) return preflight;
 
   if (req.method !== "POST") {
-    return jsonResponse({ error: "method_not_allowed" }, 405);
+    return jsonResponse(req, { error: "method_not_allowed" }, 405);
   }
 
   let address: string;
   try {
     ({ address } = await req.json());
   } catch {
-    return jsonResponse({ error: "invalid_json" }, 400);
+    return jsonResponse(req, { error: "invalid_json" }, 400);
   }
 
   if (typeof address !== "string" || !ADDRESS_RE.test(address)) {
-    return jsonResponse({ error: "invalid_address" }, 400);
+    return jsonResponse(req, { error: "invalid_address" }, 400);
   }
   address = address.toLowerCase();
 
@@ -42,8 +42,8 @@ Deno.serve(async (req) => {
 
   if (error) {
     console.error("nonce upsert failed", error);
-    return jsonResponse({ error: "internal_error" }, 500);
+    return jsonResponse(req, { error: "internal_error" }, 500);
   }
 
-  return jsonResponse({ nonce });
+  return jsonResponse(req, { nonce });
 });
