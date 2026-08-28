@@ -18,5 +18,9 @@ contract Deploy is Script {
 
         console.log("FactionWar deployed at:", address(factionWar));
         console.log("Set FACTION_WAR_ADDRESS in both contracts/.env and frontend/.env to this value.");
+        console.log(
+            "Also update the Supabase secret (faction-auth-verify reads its own copy, not frontend/.env):"
+        );
+        console.log("  supabase secrets set FACTION_WAR_ADDRESS=<address> --project-ref raeazkhjcepebwrhkahr");
     }
 }
