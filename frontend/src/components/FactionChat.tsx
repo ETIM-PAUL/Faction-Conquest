@@ -117,11 +117,7 @@ export function FactionChat() {
       )}
 
       {onChainFaction !== undefined && onChainFaction !== 0 && !hasBoughtTicket && (
-        <p style={{ color: "var(--text-muted)" }}>
-          Buy at least one ticket to unlock faction chat — it's a one-time requirement, not
-          something you need to do for every drawing. Once you've bought a single ticket, chat
-          stays unlocked for good.
-        </p>
+        <p style={{ color: "var(--text-muted)" }}>Buy one ticket through Faction Conquest to unlock chat — one-time only, stays unlocked for good.</p>
       )}
 
       {onChainFaction !== undefined && onChainFaction !== 0 && hasBoughtTicket && status !== "ready" && (

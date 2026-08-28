@@ -167,7 +167,7 @@ cap).
   "War Chest" section.
 - **Territory-tier discounts, Herald-weighted split, direct chest deposits** — implemented,
   covered by the Foundry suite, and **redeployed** to Base Sepolia at
-  [`0x71e37bEbE2aDf42EEC21AfBCf44cFdF7aef1aFD5`](https://sepolia.basescan.org/address/0x71e37bEbE2aDf42EEC21AfBCf44cFdF7aef1aFD5)
+  [`0x541804a3BAc7b275054f14481814131c223BE2BC`](https://sepolia.basescan.org/address/0x541804a3BAc7b275054f14481814131c223BE2BC)
   (`contracts/.env` and `frontend/.env` both point at it).
 - **My Tickets (individual jackpot claim)** — on-chain validated against a real settled drawing; now also previews expected payout via Megapot's `getTicketTierIds` +
 `PayoutCalculator.getExpectedDrawingTierPayouts` before claiming, so a $0 ticket never costs gas to find out.
