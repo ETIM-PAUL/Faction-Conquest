@@ -110,6 +110,30 @@ contract FactionWarTest is Test {
         assertEq(counts[uint8(FactionWar.Faction.RED)], 1, "zone 1 should show 1 RED ticket");
     }
 
+    function test_attack_tracksTicketsBoughtPerPlayer() public {
+        assertEq(war.ticketsBoughtByPlayer(redPlayer), 0, "no tickets bought yet");
+
+        vm.prank(redPlayer);
+        war.attack(_normals(), 6);
+        assertEq(war.ticketsBoughtByPlayer(redPlayer), 1, "should count the first attack as one ticket");
+
+        uint8[] memory zone30 = new uint8[](1);
+        zone30[0] = 30;
+        vm.prank(redPlayer);
+        war.attack(zone30, 7);
+        assertEq(war.ticketsBoughtByPlayer(redPlayer), 2, "should accumulate across attacks, never reset");
+
+        // Never resets across a resolved drawing either — it's a lifetime counter.
+        uint256 drawingId = jackpot.currentDrawingId();
+        jackpot.setWinningNormals(drawingId, zone30, 7);
+        vm.warp(block.timestamp + 1 days);
+        vm.deal(redPlayer, 1 ether);
+        vm.prank(redPlayer);
+        war.triggerBattle{value: 0.001 ether}();
+        war.resolveDrawing(drawingId);
+        assertEq(war.ticketsBoughtByPlayer(redPlayer), 2, "lifetime count survives a resolved drawing");
+    }
+
     function test_triggerBattle_revertsBeforeDrawingTime() public {
         vm.deal(redPlayer, 1 ether);
         vm.expectRevert(FactionWar.DrawingNotReady.selector);

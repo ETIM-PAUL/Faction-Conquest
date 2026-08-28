@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { useAccount } from "wagmi";
+import { useAccount, useReadContract } from "wagmi";
+import { FACTION_WAR_ABI } from "../contracts/FactionWar.abi";
+import { FACTION_WAR_ADDRESS } from "../contracts/addresses";
 import { FACTION_GLYPH, FACTION_LABEL, type Faction } from "../contracts/faction";
 import { CHAT_CONFIGURED } from "../lib/supabase";
 import { useFactionAuth } from "../hooks/useFactionAuth";
@@ -21,12 +23,24 @@ function shortAddress(address: string) {
 }
 
 /// Off-chain faction taunt board — see supabase/. Gated in two layers: the
-/// on-chain playerFaction (do you even belong to a faction) and the chat
-/// session (have you signed a challenge proving you own this wallet, which
-/// faction-auth-verify checks against the chain before minting a token).
+/// on-chain playerFaction (do you even belong to a faction), on-chain
+/// ticketsBoughtByPlayer (have you ever bought a real ticket — a one-time,
+/// lifetime requirement, not per-drawing), and the chat session (have you
+/// signed a challenge proving you own this wallet, which faction-auth-verify
+/// independently re-checks both on-chain conditions against before minting a
+/// token — this component's own checks are just for a clear message, not
+/// the actual gate).
 export function FactionChat() {
   const { address } = useAccount();
   const { data: onChainFaction } = usePlayerFaction();
+  const { data: ticketsBought } = useReadContract({
+    address: FACTION_WAR_ADDRESS,
+    abi: FACTION_WAR_ABI,
+    functionName: "ticketsBoughtByPlayer",
+    args: address ? [address] : undefined,
+    query: { enabled: Boolean(address) && Boolean(FACTION_WAR_ADDRESS), refetchInterval: 5_000 },
+  });
+  const hasBoughtTicket = (ticketsBought ?? 0n) > 0n;
   const { status, faction, error, signIn, client } = useFactionAuth();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [draft, setDraft] = useState("");
@@ -102,10 +116,20 @@ export function FactionChat() {
         <p style={{ color: "var(--text-muted)" }}>Join a faction to unlock its chat.</p>
       )}
 
-      {onChainFaction !== undefined && onChainFaction !== 0 && status !== "ready" && (
+      {onChainFaction !== undefined && onChainFaction !== 0 && !hasBoughtTicket && (
+        <p style={{ color: "var(--text-muted)" }}>
+          Buy at least one ticket to unlock faction chat — it's a one-time requirement, not
+          something you need to do for every drawing. Once you've bought a single ticket, chat
+          stays unlocked for good.
+        </p>
+      )}
+
+      {onChainFaction !== undefined && onChainFaction !== 0 && hasBoughtTicket && status !== "ready" && (
         <>
           <p style={{ color: "var(--text-muted)", fontSize: "var(--text-sm)" }}>
-            One signature proves this wallet is yours — no gas, nothing sent on-chain.
+            Joining a faction and buying a ticket once is all it takes — chat stays unlocked for
+            good, no need to buy again for future drawings. One signature proves this wallet is
+            yours — no gas, nothing sent on-chain.
           </p>
           <button onClick={signIn} disabled={status === "signing"}>
             {status === "signing" ? "Signing…" : "Unlock faction chat"}

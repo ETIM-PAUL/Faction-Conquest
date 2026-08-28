@@ -482,6 +482,25 @@ export const FACTION_WAR_ABI = [
   },
   {
     type: "function",
+    name: "ticketsBoughtByPlayer",
+    inputs: [
+      {
+        name: "",
+        type: "address",
+        internalType: "address",
+      },
+    ],
+    outputs: [
+      {
+        name: "",
+        type: "uint256",
+        internalType: "uint256",
+      },
+    ],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
     name: "triggerBattle",
     inputs: [],
     outputs: [],

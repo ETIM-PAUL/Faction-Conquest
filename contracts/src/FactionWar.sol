@@ -65,6 +65,10 @@ contract FactionWar {
 
     mapping(uint8 => ZoneState) private zones; // number => zone, 1..ballMax
     mapping(address => Faction) public playerFaction;
+    // Total real tickets a wallet has ever bought via attack() — permanent, never reset.
+    // Gates faction chat access (see faction-auth-verify): a one-time purchase unlocks it
+    // for good, not a per-drawing requirement.
+    mapping(address => uint256) public ticketsBoughtByPlayer;
     mapping(uint256 => Faction) public heraldByDrawing; // drawingId => faction that triggered settlement
     mapping(uint256 => bool) public drawingResolved;
     mapping(Faction => uint256) public territoryCount;
@@ -167,6 +171,8 @@ contract FactionWar {
         splits[0] = FULL_REFERRAL_SPLIT;
 
         jackpot.buyTickets(tickets, msg.sender, referrers, splits, bytes32("FACTIONWAR"));
+
+        ticketsBoughtByPlayer[msg.sender] += 1;
 
         for (uint256 i = 0; i < normals.length; i++) {
             ticketsByZoneDrawing[normals[i]][drawingId][uint8(faction)] += 1;

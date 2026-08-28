@@ -83,6 +83,7 @@ export function useFactionAuth() {
       if (!verifyRes.ok) {
         const messages: Record<string, string> = {
           no_faction: "Join a faction before chatting",
+          no_ticket: "Buy at least one ticket before chatting — it's a one-time requirement",
           nonce_expired_or_missing: "Sign-in expired — try again",
           signature_verification_failed: "Signature didn't match this wallet",
         };

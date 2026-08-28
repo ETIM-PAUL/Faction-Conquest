@@ -1,6 +1,8 @@
 // Step 2 of chat sign-in: verify the wallet signed the nonce from
-// faction-auth-nonce, independently re-read FactionWar.playerFaction
-// on-chain (never trust a client-supplied faction), then attach the result
+// faction-auth-nonce, independently re-read FactionWar.playerFaction AND
+// FactionWar.ticketsBoughtByPlayer on-chain (never trust a client-supplied
+// faction or purchase claim) — chat requires both a faction and at least one
+// real ticket ever bought, a one-time requirement, then attach the result
 // to the caller's already-established anonymous Supabase session via
 // app_metadata. A Custom Access Token Hook (see
 // supabase/migrations/0002_faction_auth_hook.sql) copies that onto every
@@ -24,6 +26,13 @@ const FACTION_WAR_ABI = [
     stateMutability: "view",
     inputs: [{ name: "", type: "address" }],
     outputs: [{ name: "", type: "uint8" }],
+  },
+  {
+    type: "function",
+    name: "ticketsBoughtByPlayer",
+    stateMutability: "view",
+    inputs: [{ name: "", type: "address" }],
+    outputs: [{ name: "", type: "uint256" }],
   },
 ] as const;
 
@@ -120,6 +129,20 @@ Deno.serve(async (req) => {
 
   if (faction === 0) {
     return jsonResponse({ error: "no_faction" }, 403);
+  }
+
+  // Chat access is gated on a one-time real ticket purchase, not per-drawing —
+  // ticketsBoughtByPlayer is a lifetime counter on FactionWar that never resets,
+  // so once it's nonzero this check passes for good.
+  const ticketsBought = await publicClient.readContract({
+    address: factionWarAddress,
+    abi: FACTION_WAR_ABI,
+    functionName: "ticketsBoughtByPlayer",
+    args: [address as `0x${string}`],
+  });
+
+  if (ticketsBought === 0n) {
+    return jsonResponse({ error: "no_ticket" }, 403);
   }
 
   const { error: updateError } = await adminClient.auth.admin.updateUserById(user.id, {
