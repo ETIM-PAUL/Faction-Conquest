@@ -212,3 +212,64 @@ input {
     transition-duration: 0.001ms !important;
   }
 }
+
+/* ---- Wallet profile modal ---- */
+.profile-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: var(--space-3);
+  overflow-y: auto;
+}
+
+.profile-modal {
+  width: 100%;
+  max-width: 560px;
+  /* Long win lists scroll inside the panel instead of pushing it off-screen. */
+  max-height: calc(100vh - var(--space-4) * 2);
+  overflow-y: auto;
+}
+
+/* Stat grid: auto-fit so it goes 3-up on desktop and 1-up on a phone with no
+   extra breakpoints. 150px is the widest "First seen" value plus padding. */
+.profile-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: var(--space-1);
+}
+
+.profile-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: var(--bg);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius);
+  padding: var(--space-1);
+}
+
+.profile-stat__label {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  text-transform: uppercase;
+}
+
+.profile-stat__value {
+  font-size: var(--text-lg);
+  font-weight: 600;
+}
+
+/* Placeholder warning — accent left rule so it reads as a caution without
+   relying on color alone (the ⚠ glyph carries it too). */
+.profile-notice {
+  background: var(--bg);
+  border: 1px solid var(--accent-dim);
+  border-left: 4px solid var(--accent);
+  border-radius: var(--radius);
+  padding: var(--space-2);
+  margin-bottom: var(--space-2);
+}

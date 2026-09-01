@@ -9,6 +9,7 @@ import { BattleLog } from "./components/BattleLog";
 import { FactionChat } from "./components/FactionChat";
 import { MyTickets } from "./components/MyTickets";
 import { MapGrid } from "./components/MapGrid";
+import { WalletProfile } from "./components/WalletProfile";
 import { MapScene } from "./three/MapScene";
 import { FACTION_WAR_ADDRESS } from "./contracts/addresses";
 
@@ -32,7 +33,11 @@ function App() {
         }}
       >
         <h1 style={{ margin: 0, fontSize: "var(--text-lg)" }}>⚔ Faction Conquest</h1>
-        <ConnectWallet />
+        <div style={{ display: "flex", alignItems: "center", gap: "var(--space-1)", flexWrap: "wrap" }}>
+          {/* Renders nothing until a wallet is connected. */}
+          <WalletProfile />
+          <ConnectWallet />
+        </div>
       </header>
 
       <div className="app-body">
